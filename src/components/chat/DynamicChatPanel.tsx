@@ -1,0 +1,197 @@
+'use client'
+
+import { useRef, useEffect, useMemo } from 'react'
+import { Bot, User, Loader2, AlertCircle } from 'lucide-react'
+import { Message } from '@/lib/types'
+import { useChatStore } from '@/lib/stores/chat'
+import { useSettingsStore } from '@/lib/stores/settings'
+import { useChat } from '@/hooks/useChat'
+import { useIsClient } from '@/hooks/useIsClient'
+import { MessageStats } from './MessageStats'
+import { SelectedModel } from '@/lib/stores/modelTabs'
+import { cn } from '@/lib/utils'
+
+interface DynamicChatPanelProps {
+  selectedModel: SelectedModel
+  className?: string
+}
+
+export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const isClient = useIsClient()
+  
+  const { providers } = useSettingsStore()
+  const { 
+    getActiveSession, 
+    isLoading,
+    activeSessionId
+  } = useChatStore()
+  
+  const { sendMessage } = useChat({ 
+    provider: selectedModel.provider,
+    skipAddingUserMessage: true // For unified input
+  })
+  
+  const providerConfig = providers[selectedModel.provider]
+  const session = getActiveSession()
+  
+  // Filter messages for this specific model
+  const messages = useMemo(() => {
+    if (!session?.messages) return []
+    
+    const filtered = session.messages.filter(msg => 
+      msg.role === 'user' || 
+      (msg.provider === selectedModel.provider && msg.model === selectedModel.model.id)
+    )
+    
+    // Debug: Log what we're finding
+    if (selectedModel.provider === 'openrouter') {
+      console.log(`DEBUG ${selectedModel.model.name}:`, {
+        expectedModelId: selectedModel.model.id,
+        totalMessages: session.messages.length,
+        assistantMessages: session.messages.filter(m => m.role === 'assistant' && m.provider === 'openrouter').map(m => ({
+          model: m.model, 
+          content: m.content.slice(0, 50)
+        })),
+        filteredCount: filtered.length
+      })
+    }
+    
+    return filtered
+  }, [session?.messages, selectedModel.provider, selectedModel.model.id])
+  
+  const loading = isLoading[selectedModel.provider]
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const getProviderIcon = (provider: string) => {
+    switch (provider) {
+      case 'openai': return '🤖'
+      case 'anthropic': return '🧠'
+      case 'gemini': return '💎' 
+      case 'openrouter': return '🌐'
+      default: return '🔮'
+    }
+  }
+
+  const getProviderColor = (provider: string) => {
+    switch (provider) {
+      case 'openai': return 'border-green-500'
+      case 'anthropic': return 'border-orange-500'
+      case 'gemini': return 'border-blue-500'
+      case 'openrouter': return 'border-purple-500'
+      default: return 'border-gray-500'
+    }
+  }
+
+  // Safety check for provider config (after all hooks)
+  if (!isClient || !providerConfig) {
+    return (
+      <div className={cn('flex flex-col h-full border border-border rounded-lg bg-background', className)}>
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{getProviderIcon(selectedModel.provider)}</span>
+            <div>
+              <h3 className="font-semibold text-sm">{selectedModel.model.name}</h3>
+              <p className="text-xs text-muted-foreground">{selectedModel.provider}</p>
+            </div>
+          </div>
+          <div className="w-3 h-3 rounded-full bg-gray-400" />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-sm text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('flex flex-col h-full border rounded-lg bg-background', getProviderColor(selectedModel.provider), className)}>
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="text-2xl flex-shrink-0">{getProviderIcon(selectedModel.provider)}</span>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-sm truncate">{selectedModel.model.name}</h3>
+            <p className="text-xs text-muted-foreground">{providerConfig.name}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className={cn(
+            'w-3 h-3 rounded-full',
+            providerConfig.enabled ? 'bg-green-500' : 'bg-gray-400'
+          )} />
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {!providerConfig.enabled ? (
+          <div className="flex items-center justify-center h-full text-center">
+            <div className="space-y-2">
+              <AlertCircle className="w-8 h-8 mx-auto text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Configure API key to enable {providerConfig.name}
+              </p>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-center">
+            <p className="text-sm text-muted-foreground">
+              Ready to chat with {selectedModel.model.name}
+            </p>
+          </div>
+        ) : (
+          messages.map((message) => (
+            <div
+              key={message.id}
+              className={cn(
+                'flex gap-3',
+                message.role === 'user' ? 'justify-end' : 'justify-start'
+              )}
+            >
+              {message.role === 'assistant' && (
+                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg">{getProviderIcon(selectedModel.provider)}</span>
+                </div>
+              )}
+              
+              <div
+                className={cn(
+                  'max-w-[80%] rounded-lg px-3 py-2 text-sm',
+                  message.role === 'user'
+                    ? 'bg-primary text-primary-foreground ml-auto'
+                    : 'bg-muted text-muted-foreground'
+                )}
+              >
+                {message.content}
+                <MessageStats message={message} />
+              </div>
+              
+              {message.role === 'user' && (
+                <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-4 h-4" />
+                </div>
+              )}
+            </div>
+          ))
+        )}
+        
+        {loading && (
+          <div className="flex gap-3">
+            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+              <Loader2 className="w-4 h-4 text-primary animate-spin" />
+            </div>
+            <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground">
+              Thinking...
+            </div>
+          </div>
+        )}
+        
+        <div ref={messagesEndRef} />
+      </div>
+    </div>
+  )
+}

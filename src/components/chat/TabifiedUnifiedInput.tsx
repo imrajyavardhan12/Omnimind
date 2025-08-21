@@ -1,0 +1,304 @@
+'use client'
+
+import { useState, useMemo } from 'react'
+import { Send, Loader2 } from 'lucide-react'
+import { useSettingsStore } from '@/lib/stores/settings'
+import { useChatStore } from '@/lib/stores/chat'
+import { useModelTabsStore } from '@/lib/stores/modelTabs'
+import { useChat } from '@/hooks/useChat'
+import { ProviderName } from '@/lib/types'
+import { cn } from '@/lib/utils'
+
+interface TabifiedUnifiedInputProps {
+  className?: string
+}
+
+export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
+  const [input, setInput] = useState('')
+  const { providers } = useSettingsStore()
+  const { createSession, activeSessionId, isLoading } = useChatStore()
+  const { selectedModels } = useModelTabsStore()
+  
+  // Get active models (both enabled providers AND selected in tabs)
+  const activeModels = selectedModels.filter(sm => 
+    providers[sm.provider]?.enabled
+  )
+  
+  // Set up chat hooks for each active provider (skip adding user message since we add it once)
+  const chatHooks = {
+    openai: useChat({ provider: 'openai', skipAddingUserMessage: true }),
+    anthropic: useChat({ provider: 'anthropic', skipAddingUserMessage: true }),
+    gemini: useChat({ provider: 'gemini', skipAddingUserMessage: true }),
+    openrouter: useChat({ provider: 'openrouter', skipAddingUserMessage: true })
+  }
+
+  // Only check loading state for selected models' providers
+  const isAnyLoading = activeModels.some(model => isLoading[model.provider])
+
+  const handleSend = async () => {
+    if (!input.trim() || activeModels.length === 0 || isAnyLoading) return
+
+    // Create session if none exists
+    let sessionId = activeSessionId
+    if (!sessionId) {
+      sessionId = createSession()
+    }
+
+    const message = input.trim()
+    setInput('')
+
+    // Add user message only once to avoid duplicates
+    const { addMessage } = useChatStore.getState()
+    const userMessage = {
+      id: crypto.randomUUID(),
+      role: 'user' as const,
+      content: message,
+      timestamp: Date.now()
+    }
+    addMessage(sessionId, userMessage)
+
+    // Send to each model individually with direct API calls to avoid hook conflicts
+    const sendPromises = activeModels.map(async (selectedModel) => {
+      try {
+        console.log(`Sending to ${selectedModel.model.name} (${selectedModel.model.id}) via ${selectedModel.provider}`)
+        
+        // Add system prompt to message if it exists
+        let messageToSend = message
+        if (selectedModel.settings.systemPrompt.trim()) {
+          messageToSend = `${selectedModel.settings.systemPrompt}\n\nUser: ${message}`
+        }
+        
+        // Create assistant message with correct model ID
+        const assistantMessageId = crypto.randomUUID()
+        const assistantMessage = {
+          id: assistantMessageId,
+          role: 'assistant' as const,
+          content: '',
+          timestamp: Date.now(),
+          provider: selectedModel.provider,
+          model: selectedModel.model.id
+        }
+        useChatStore.getState().addMessage(sessionId, assistantMessage)
+        
+        // Set loading for this provider
+        useChatStore.getState().setLoading(selectedModel.provider, true)
+        
+        // Make direct API call with specific model
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            [`x-api-key-${selectedModel.provider}`]: useSettingsStore.getState().getApiKey(selectedModel.provider)
+          },
+          body: JSON.stringify({
+            messages: [...useChatStore.getState().getActiveSession()?.messages || [], {
+              id: crypto.randomUUID(),
+              role: 'user',
+              content: messageToSend,
+              timestamp: Date.now()
+            }],
+            model: selectedModel.model.id,
+            temperature: selectedModel.settings.temperature,
+            maxTokens: selectedModel.settings.maxTokens,
+            stream: true,
+            provider: selectedModel.provider
+          })
+        })
+        
+        if (response.ok && response.body) {
+          const reader = response.body.getReader()
+          const decoder = new TextDecoder()
+          let buffer = ''
+          let fullContent = ''
+          
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6)
+                if (data === '[DONE]') break
+                
+                try {
+                  const parsed = JSON.parse(data)
+                  if (parsed.content) {
+                    fullContent += parsed.content
+                    // Update message with content and any available metadata
+                    const updateData: any = { content: fullContent }
+                    if (parsed.tokens) updateData.tokens = parsed.tokens
+                    if (parsed.cost) updateData.cost = parsed.cost
+                    
+                    useChatStore.getState().updateMessage(sessionId, assistantMessageId, updateData)
+                  }
+                  
+                  // Handle final message with complete stats
+                  if (parsed.done || parsed.finish_reason) {
+                    console.log('Final message stats:', { tokens: parsed.tokens, cost: parsed.cost })
+                    const updateData: any = { content: fullContent }
+                    if (parsed.tokens) updateData.tokens = parsed.tokens
+                    if (parsed.cost) updateData.cost = parsed.cost
+                    
+                    useChatStore.getState().updateMessage(sessionId, assistantMessageId, updateData)
+                  }
+                } catch (e) {
+                  console.error('Error parsing stream data:', e, 'Raw data:', data)
+                }
+              }
+            }
+          }
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        
+        // After streaming is complete, calculate tokens/cost if not provided
+        setTimeout(() => {
+          const finalMessage = useChatStore.getState().getActiveSession()?.messages.find(m => m.id === assistantMessageId)
+          if (finalMessage && (!finalMessage.tokens || !finalMessage.cost)) {
+            console.log('Calculating missing stats for:', selectedModel.model.name)
+            
+            // Import tokenizer functions dynamically
+            import('@/lib/utils/tokenizer').then(({ estimateTokens, calculateCost }) => {
+              const inputTokens = estimateTokens(messageToSend)
+              const outputTokens = estimateTokens(finalMessage.content)
+              const totalTokens = inputTokens + outputTokens
+              const cost = calculateCost(inputTokens, outputTokens, selectedModel.model.id)
+              
+              useChatStore.getState().updateMessage(sessionId, assistantMessageId, {
+                tokens: totalTokens,
+                cost: cost
+              })
+            })
+          }
+        }, 1000) // Wait 1 second after completion
+        
+        useChatStore.getState().setLoading(selectedModel.provider, false)
+      } catch (error) {
+        console.error(`Error sending to ${selectedModel.provider} (${selectedModel.model.name}):`, error)
+        useChatStore.getState().updateMessage(sessionId, assistantMessageId, {
+          content: 'Error: Failed to get response'
+        })
+        useChatStore.getState().setLoading(selectedModel.provider, false)
+      }
+    })
+
+    // Wait for all models to complete
+    await Promise.allSettled(sendPromises)
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  const getInputPlaceholder = () => {
+    if (activeModels.length === 0) {
+      const hasSelectedButDisabled = selectedModels.some(sm => 
+        !providers[sm.provider]?.enabled
+      )
+      
+      if (hasSelectedButDisabled) {
+        return 'Configure API keys in Settings for selected models...'
+      }
+      
+      if (selectedModels.length === 0) {
+        return 'Add models above to start comparing...'
+      }
+      
+      return 'Configure API keys in Settings...'
+    }
+    
+    const modelNames = activeModels
+      .map(sm => sm.model.name)
+      .join(', ')
+    return `Send to ${modelNames}...`
+  }
+
+  const getActiveCount = () => {
+    return activeModels.length
+  }
+
+  return (
+    <div className={cn('border border-border rounded-lg p-4 bg-background', className)}>
+      <div className="space-y-4">
+        {/* Input Area */}
+        <div className="relative">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder={getInputPlaceholder()}
+            disabled={activeModels.length === 0 || isAnyLoading}
+            className="w-full h-32 p-3 border border-input rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring bg-background placeholder:text-muted-foreground disabled:opacity-50"
+            rows={4}
+          />
+          
+          {/* Character count */}
+          <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+            {input.length} characters
+          </div>
+        </div>
+
+        {/* Action Bar */}
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                'w-2 h-2 rounded-full',
+                activeModels.length > 0 ? 'bg-green-500' : 'bg-gray-400'
+              )} />
+              <span>
+                {getActiveCount()} / {selectedModels.length} model{getActiveCount() !== 1 ? 's' : ''} active
+              </span>
+            </div>
+            
+            {activeModels.length > 0 && (
+              <div className="text-xs">
+                Active: {activeModels.map(sm => sm.model.name).join(', ')}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || activeModels.length === 0 || isAnyLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isAnyLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Send to All
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Quick Actions */}
+        {activeModels.length === 0 && (
+          <div className="text-center py-4 border border-dashed border-border rounded-lg">
+            <p className="text-sm text-muted-foreground mb-2">
+              No active models
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {selectedModels.length === 0 
+                ? 'Add models using the tab bar above'
+                : 'Configure API keys in Settings for your selected models'
+              }
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
