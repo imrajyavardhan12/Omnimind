@@ -47,13 +47,15 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
     const message = input.trim()
     setInput('')
 
-    // Add user message only once to avoid duplicates
+    // Add user message with active models tracking
     const { addMessage } = useChatStore.getState()
     const userMessage = {
       id: crypto.randomUUID(),
       role: 'user' as const,
       content: message,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      // Track which models are currently active for this message
+      activeModels: activeModels.map(sm => `${sm.provider}:${sm.model.id}`)
     }
     addMessage(sessionId, userMessage)
 
