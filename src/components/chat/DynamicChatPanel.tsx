@@ -39,23 +39,26 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
   const messages = useMemo(() => {
     if (!session?.messages) return []
     
-    const filtered = session.messages.filter(msg => 
-      msg.role === 'user' || 
-      (msg.provider === selectedModel.provider && msg.model === selectedModel.model.id)
-    )
+    const modelKey = `${selectedModel.provider}:${selectedModel.model.id}`
     
-    // Debug: Log what we're finding
-    if (selectedModel.provider === 'openrouter') {
-      console.log(`DEBUG ${selectedModel.model.name}:`, {
-        expectedModelId: selectedModel.model.id,
-        totalMessages: session.messages.length,
-        assistantMessages: session.messages.filter(m => m.role === 'assistant' && m.provider === 'openrouter').map(m => ({
-          model: m.model, 
-          content: m.content.slice(0, 50)
-        })),
-        filteredCount: filtered.length
-      })
-    }
+    const filtered = session.messages.filter(msg => {
+      // Include assistant messages from this specific model
+      if (msg.role === 'assistant') {
+        return msg.provider === selectedModel.provider && msg.model === selectedModel.model.id
+      }
+      
+      // Include user messages only if this model was active when the message was sent
+      if (msg.role === 'user') {
+        // If activeModels is not defined (for backward compatibility), include all user messages
+        if (!msg.activeModels) {
+          return true
+        }
+        // Otherwise, only include if this model was active
+        return msg.activeModels.includes(modelKey)
+      }
+      
+      return false
+    })
     
     return filtered
   }, [session?.messages, selectedModel.provider, selectedModel.model.id])
