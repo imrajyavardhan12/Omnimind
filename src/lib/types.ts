@@ -7,6 +7,7 @@ export interface Message {
   model?: string
   tokens?: number
   cost?: number
+  activeModels?: string[] // Track which models were active when user message was sent
 }
 
 export interface Model {
