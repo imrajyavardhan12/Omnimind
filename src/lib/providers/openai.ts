@@ -1,14 +1,23 @@
 import { LLMProvider, ChatRequest, ChatResponse, StreamChunk, Model } from '../types'
 import { estimateTokens, calculateCost } from '../utils/tokenizer'
 
+// Fallback models when API is not available
 export const openaiModels: Model[] = [
   {
-    id: 'gpt-4',
-    name: 'GPT-4',
+    id: 'gpt-4o',
+    name: 'GPT-4o',
     provider: 'openai',
-    contextLength: 8192,
-    inputCost: 0.03,
-    outputCost: 0.06
+    contextLength: 128000,
+    inputCost: 0.0025,
+    outputCost: 0.01
+  },
+  {
+    id: 'gpt-4o-mini',
+    name: 'GPT-4o Mini',
+    provider: 'openai',
+    contextLength: 128000,
+    inputCost: 0.00015,
+    outputCost: 0.0006
   },
   {
     id: 'gpt-4-turbo',
@@ -23,24 +32,8 @@ export const openaiModels: Model[] = [
     name: 'GPT-3.5 Turbo',
     provider: 'openai',
     contextLength: 16385,
-    inputCost: 0.001,
-    outputCost: 0.002
-  },
-  {
-    id: 'gpt-4o',
-    name: 'GPT-4o',
-    provider: 'openai',
-    contextLength: 128000,
-    inputCost: 0.005,
-    outputCost: 0.015
-  },
-  {
-    id: 'gpt-4o-mini',
-    name: 'GPT-4o Mini',
-    provider: 'openai',
-    contextLength: 128000,
-    inputCost: 0.00015,
-    outputCost: 0.0006
+    inputCost: 0.0005,
+    outputCost: 0.0015
   }
 ]
 
