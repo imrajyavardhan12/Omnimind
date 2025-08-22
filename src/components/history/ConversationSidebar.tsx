@@ -71,7 +71,7 @@ export function ConversationSidebar({ className }: ConversationSidebarProps) {
   // Collapsed state - show only main icons
   if (isCollapsed) {
     return (
-      <div className={cn('w-14 border-r border-border bg-background flex flex-col py-4', className)}>
+      <div className={cn('w-14 border-r border-border bg-background flex flex-col py-4 sidebar-transition', className)}>
         <div className="flex flex-col items-center space-y-3">
           <button
             onClick={() => setIsCollapsed(false)}
@@ -103,9 +103,10 @@ export function ConversationSidebar({ className }: ConversationSidebarProps) {
 
   // Expanded state - full sidebar
   return (
-    <div className={cn('w-80 border-r border-border bg-background flex flex-col', className)}>
-      {/* Header */}
-      <div className="p-4 border-b border-border">
+    <div className={cn('w-80 border-r border-border bg-background flex flex-col sidebar-transition', className)}>
+      <div className="sidebar-content">
+        {/* Header */}
+        <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold">Conversations</h2>
           <div className="flex items-center gap-1">
@@ -155,10 +156,10 @@ export function ConversationSidebar({ className }: ConversationSidebarProps) {
                 <div
                   key={session.id}
                   className={cn(
-                    'p-3 rounded-lg cursor-pointer transition-colors group',
+                    'p-3 rounded-lg cursor-pointer transition-all duration-200 group',
                     isActive 
-                      ? 'bg-primary/10 border border-primary/20' 
-                      : 'hover:bg-accent'
+                      ? 'bg-primary/10 border border-primary/20 scale-[1.02]' 
+                      : 'hover:bg-accent hover:scale-[1.01]'
                   )}
                   onClick={() => setActiveSession(session.id)}
                 >
@@ -225,6 +226,7 @@ export function ConversationSidebar({ className }: ConversationSidebarProps) {
           {sessions.length} conversation{sessions.length !== 1 ? 's' : ''} total
         </div>
       )}
+      </div>
     </div>
   )
 }

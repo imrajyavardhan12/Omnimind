@@ -20,7 +20,14 @@ const chatRequestSchema = z.object({
     content: z.string(),
     timestamp: z.number(),
     provider: z.string().optional(),
-    model: z.string().optional()
+    model: z.string().optional(),
+    attachments: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      type: z.string(),
+      size: z.number(),
+      data: z.string()
+    })).optional()
   })),
   provider: z.enum(['openai', 'anthropic', 'gemini', 'openrouter']),
   model: z.string(),
@@ -57,7 +64,8 @@ export async function POST(request: NextRequest) {
         id: msg.id,
         role: msg.role,
         content: msg.content,
-        timestamp: msg.timestamp
+        timestamp: msg.timestamp,
+        attachments: msg.attachments
       })),
       model,
       temperature,

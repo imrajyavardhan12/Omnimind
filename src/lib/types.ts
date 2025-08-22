@@ -1,3 +1,12 @@
+export interface FileAttachment {
+  id: string
+  name: string
+  type: string
+  size: number
+  data: string // base64 encoded data
+  url?: string // for display purposes
+}
+
 export interface Message {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -8,6 +17,7 @@ export interface Message {
   tokens?: number
   cost?: number
   activeModels?: string[] // Track which models were active when user message was sent
+  attachments?: FileAttachment[] // File attachments for multimodal support
 }
 
 export interface Model {
@@ -17,6 +27,8 @@ export interface Model {
   contextLength: number
   inputCost?: number // per 1K tokens
   outputCost?: number // per 1K tokens
+  supportsFiles?: boolean // Whether this model supports file uploads
+  supportedFileTypes?: string[] // MIME types or extensions supported
 }
 
 export interface ChatRequest {

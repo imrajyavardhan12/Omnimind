@@ -7,6 +7,7 @@ import { ModelSelectionModal } from './ModelSelectionModal'
 import { ModelSettingsModal } from './ModelSettingsModal'
 import { useIsClient } from '@/hooks/useIsClient'
 import { cn } from '@/lib/utils'
+import { getProviderIcon } from '@/components/ui/provider-icons'
 
 interface ModelTabBarProps {
   className?: string
@@ -32,15 +33,6 @@ export function ModelTabBar({ className }: ModelTabBarProps) {
     )
   }
 
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case 'openai': return '🤖'
-      case 'anthropic': return '🧠' 
-      case 'gemini': return '💎'
-      case 'openrouter': return '🌐'
-      default: return '🔮'
-    }
-  }
 
   const getProviderColor = (provider: string) => {
     switch (provider) {
@@ -64,9 +56,9 @@ export function ModelTabBar({ className }: ModelTabBarProps) {
                 getProviderColor(selectedModel.provider)
               )}
             >
-              <span className="text-lg leading-none">
-                {getProviderIcon(selectedModel.provider)}
-              </span>
+              <div className="flex items-center">
+                {getProviderIcon(selectedModel.provider, "w-4 h-4")}
+              </div>
               <span className="truncate max-w-[120px]">
                 {selectedModel.model.name}
               </span>

@@ -29,13 +29,6 @@ export function MessageStats({ message, className }: MessageStatsProps) {
           <span>{formatCost(message.cost)}</span>
         </div>
       )}
-      
-      {message.model && (
-        <div className="flex items-center gap-1">
-          <Clock className="w-3 h-3" />
-          <span className="font-mono text-xs">{message.model}</span>
-        </div>
-      )}
     </div>
   )
 }

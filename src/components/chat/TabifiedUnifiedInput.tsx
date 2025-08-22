@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Send, Loader2 } from 'lucide-react'
+import { Send, Loader2, Square } from 'lucide-react'
 import { useSettingsStore } from '@/lib/stores/settings'
 import { useChatStore } from '@/lib/stores/chat'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useChat } from '@/hooks/useChat'
-import { ProviderName } from '@/lib/types'
+import { ProviderName, FileAttachment } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { FileUpload } from './FileUpload'
 
 interface TabifiedUnifiedInputProps {
   className?: string
@@ -15,8 +16,9 @@ interface TabifiedUnifiedInputProps {
 
 export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
   const [input, setInput] = useState('')
+  const [attachments, setAttachments] = useState<FileAttachment[]>([])
   const { providers } = useSettingsStore()
-  const { createSession, activeSessionId, isLoading } = useChatStore()
+  const { createSession, activeSessionId, isLoading, setAbortController, stopAllResponses } = useChatStore()
   const { selectedModels } = useModelTabsStore()
   
   // Get active models (both enabled providers AND selected in tabs)
@@ -36,7 +38,7 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
   const isAnyLoading = activeModels.some(model => isLoading[model.provider])
 
   const handleSend = async () => {
-    if (!input.trim() || activeModels.length === 0 || isAnyLoading) return
+    if ((!input.trim() && attachments.length === 0) || activeModels.length === 0 || isAnyLoading) return
 
     // Create session if none exists
     let sessionId = activeSessionId
@@ -46,6 +48,7 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
 
     const message = input.trim()
     setInput('')
+    setAttachments([])
 
     // Add user message with active models tracking
     const { addMessage } = useChatStore.getState()
@@ -55,7 +58,8 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
       content: message,
       timestamp: Date.now(),
       // Track which models are currently active for this message
-      activeModels: activeModels.map(sm => `${sm.provider}:${sm.model.id}`)
+      activeModels: activeModels.map(sm => `${sm.provider}:${sm.model.id}`),
+      attachments: attachments.length > 0 ? attachments : undefined
     }
     addMessage(sessionId, userMessage)
 
@@ -85,9 +89,14 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
         // Set loading for this provider
         useChatStore.getState().setLoading(selectedModel.provider, true)
         
+        // Create abort controller for this request
+        const abortController = new AbortController()
+        useChatStore.getState().setAbortController(selectedModel.provider, abortController)
+        
         // Make direct API call with specific model
         const response = await fetch('/api/chat', {
           method: 'POST',
+          signal: abortController.signal,
           headers: {
             'Content-Type': 'application/json',
             [`x-api-key-${selectedModel.provider}`]: useSettingsStore.getState().getApiKey(selectedModel.provider)
@@ -179,12 +188,23 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
         }, 1000) // Wait 1 second after completion
         
         useChatStore.getState().setLoading(selectedModel.provider, false)
+        useChatStore.getState().setAbortController(selectedModel.provider, null)
       } catch (error) {
         console.error(`Error sending to ${selectedModel.provider} (${selectedModel.model.name}):`, error)
-        useChatStore.getState().updateMessage(sessionId, assistantMessageId, {
-          content: 'Error: Failed to get response'
-        })
+        
+        // Check if error is due to abort
+        if (error instanceof Error && error.name === 'AbortError') {
+          useChatStore.getState().updateMessage(sessionId, assistantMessageId, {
+            content: 'Response stopped by user'
+          })
+        } else {
+          useChatStore.getState().updateMessage(sessionId, assistantMessageId, {
+            content: 'Error: Failed to get response'
+          })
+        }
+        
         useChatStore.getState().setLoading(selectedModel.provider, false)
+        useChatStore.getState().setAbortController(selectedModel.provider, null)
       }
     })
 
@@ -219,7 +239,7 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
     const modelNames = activeModels
       .map(sm => sm.model.name)
       .join(', ')
-    return `Send to ${modelNames}...`
+    return `Type a message or attach files to send to ${modelNames}...`
   }
 
   const getActiveCount = () => {
@@ -247,6 +267,14 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
           </div>
         </div>
 
+        {/* File Upload */}
+        <FileUpload
+          onFilesSelected={(files) => setAttachments(prev => [...prev, ...files])}
+          selectedFiles={attachments}
+          onRemoveFile={(fileId) => setAttachments(prev => prev.filter(f => f.id !== fileId))}
+          disabled={activeModels.length === 0 || isAnyLoading}
+        />
+
         {/* Action Bar */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -269,7 +297,7 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
 
           <button
             onClick={handleSend}
-            disabled={!input.trim() || activeModels.length === 0 || isAnyLoading}
+            disabled={(!input.trim() && attachments.length === 0) || activeModels.length === 0 || isAnyLoading}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isAnyLoading ? (

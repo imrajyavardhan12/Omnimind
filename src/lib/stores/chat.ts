@@ -7,6 +7,7 @@ interface ChatState {
   activeSessionId: string | null
   isLoading: Record<ProviderName, boolean>
   visibleProviders: Record<ProviderName, boolean>
+  abortControllers: Record<ProviderName, AbortController | null>
   
   // Actions
   createSession: () => string
@@ -18,6 +19,9 @@ interface ChatState {
   getActiveSession: () => ChatSession | null
   toggleProviderVisibility: (provider: ProviderName) => void
   resetProviderVisibility: () => void
+  setAbortController: (provider: ProviderName, controller: AbortController | null) => void
+  stopResponse: (provider?: ProviderName) => void
+  stopAllResponses: () => void
 }
 
 export const useChatStore = create<ChatState>()(
@@ -36,6 +40,12 @@ export const useChatStore = create<ChatState>()(
     anthropic: true,
     gemini: true,
     openrouter: true
+  },
+  abortControllers: {
+    openai: null,
+    anthropic: null,
+    gemini: null,
+    openrouter: null
   },
 
   createSession: () => {
@@ -142,13 +152,80 @@ export const useChatStore = create<ChatState>()(
         openrouter: true
       }
     })
+  },
+
+  setAbortController: (provider: ProviderName, controller: AbortController | null) => {
+    set(state => ({
+      abortControllers: {
+        ...state.abortControllers,
+        [provider]: controller
+      }
+    }))
+  },
+
+  stopResponse: (provider?: ProviderName) => {
+    const state = get()
+    if (provider) {
+      // Stop specific provider
+      const controller = state.abortControllers[provider]
+      if (controller) {
+        controller.abort()
+        set(state => ({
+          abortControllers: {
+            ...state.abortControllers,
+            [provider]: null
+          },
+          isLoading: {
+            ...state.isLoading,
+            [provider]: false
+          }
+        }))
+      }
+    }
+  },
+
+  stopAllResponses: () => {
+    const state = get()
+    // Abort all active controllers
+    Object.entries(state.abortControllers).forEach(([provider, controller]) => {
+      if (controller) {
+        controller.abort()
+      }
+    })
+    
+    // Reset all controllers and loading states
+    set({
+      abortControllers: {
+        openai: null,
+        anthropic: null,
+        gemini: null,
+        openrouter: null
+      },
+      isLoading: {
+        openai: false,
+        anthropic: false,
+        gemini: false,
+        openrouter: false
+      }
+    })
   }
 }),
     {
       name: 'omnimind-chat-sessions',
-      // Only persist essential data (visibility persists across refresh but resets per session)
+      // Only persist essential data, exclude file attachments to prevent quota issues
       partialize: (state) => ({
-        sessions: state.sessions,
+        sessions: state.sessions.map(session => ({
+          ...session,
+          messages: session.messages.map(message => ({
+            ...message,
+            // Don't persist file data to avoid storage quota issues
+            attachments: message.attachments?.map(att => ({
+              ...att,
+              data: '', // Remove base64 data from storage
+              url: '' // Remove blob URLs from storage  
+            }))
+          }))
+        })),
         activeSessionId: state.activeSessionId,
         visibleProviders: state.visibleProviders
       })

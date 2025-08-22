@@ -5,6 +5,7 @@ import { X, Plus, Check, Search } from 'lucide-react'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { Model } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { getProviderIcon } from '@/components/ui/provider-icons'
 
 interface ModelSelectionModalProps {
   isOpen: boolean
@@ -52,15 +53,6 @@ export function ModelSelectionModal({ isOpen, onClose }: ModelSelectionModalProp
     }
   }
 
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case 'openai': return '🤖'
-      case 'anthropic': return '🧠'
-      case 'gemini': return '💎'
-      case 'openrouter': return '🌐'
-      default: return '🔮'
-    }
-  }
 
   const handleAddModel = (model: Model) => {
     if (!canAddMore()) return
@@ -104,7 +96,7 @@ export function ModelSelectionModal({ isOpen, onClose }: ModelSelectionModalProp
             {Object.entries(filteredModelsByProvider).map(([provider, models]) => (
               <div key={provider}>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-2xl">{getProviderIcon(provider)}</span>
+                  <div className="w-6 h-6">{getProviderIcon(provider, "w-6 h-6")}</div>
                   <h3 className="text-lg font-semibold">{getProviderDisplayName(provider)}</h3>
                   <span className="text-sm text-muted-foreground">({models.length} models)</span>
                 </div>

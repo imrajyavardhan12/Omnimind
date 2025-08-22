@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings } from 'lucide-react'
+import { Settings, Square } from 'lucide-react'
 import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import { SessionStats } from '@/components/chat/SessionStats'
 import { ExportButton } from '@/components/chat/ExportButton'
@@ -10,11 +10,16 @@ import { ModelTabBar } from '@/components/chat/ModelTabBar'
 import { DynamicChatPanel } from '@/components/chat/DynamicChatPanel'
 import { TabifiedUnifiedInput } from '@/components/chat/TabifiedUnifiedInput'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
+import { useChatStore } from '@/lib/stores/chat'
 import { ProviderName } from '@/lib/types'
 
 export default function Home() {
   const [showSettings, setShowSettings] = useState(false)
   const { selectedModels } = useModelTabsStore()
+  const { isLoading, stopAllResponses } = useChatStore()
+  
+  // Check if any model is currently loading
+  const isAnyLoading = Object.values(isLoading).some(loading => loading)
   
   // Dynamic grid class - force all models into single row
   const getGridClass = (count: number) => {
@@ -29,20 +34,17 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen overflow-x-hidden">
       {/* Sidebar */}
       <ConversationSidebar />
       
       {/* Main Content */}
-      <div className="flex-1">
+      <div className="flex-1 min-w-0 overflow-x-hidden">
         {showSettings ? (
           <div className="p-6 space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-3xl font-bold tracking-tighter">Settings</h2>
-                <p className="text-muted-foreground mt-2">
-                  Configure your API keys and preferences
-                </p>
+                <h2 className="text-xl font-medium">Settings</h2>
               </div>
               <button
                 onClick={() => setShowSettings(false)}
@@ -55,16 +57,21 @@ export default function Home() {
           </div>
         ) : (
           <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-3xl font-bold tracking-tighter">
-                  Compare LLM Responses
-                </h2>
-                <p className="text-muted-foreground mt-2">
-                  Get responses from multiple AI models side-by-side
-                </p>
-              </div>
+            <div className="flex items-center justify-end">
               <div className="flex gap-2">
+                <button
+                  onClick={stopAllResponses}
+                  disabled={!isAnyLoading}
+                  className={`flex items-center gap-2 px-4 py-2 border rounded-md transition-colors ${
+                    isAnyLoading 
+                      ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90 border-destructive' 
+                      : 'border-border text-muted-foreground bg-muted/50 cursor-not-allowed opacity-50'
+                  }`}
+                  title={isAnyLoading ? "Stop all ongoing responses" : "No active responses to stop"}
+                >
+                  <Square className="w-4 h-4" />
+                  Stop All
+                </button>
                 <ExportButton />
                 <button
                   onClick={() => setShowSettings(true)}

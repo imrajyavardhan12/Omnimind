@@ -8,8 +8,10 @@ import { useSettingsStore } from '@/lib/stores/settings'
 import { useChat } from '@/hooks/useChat'
 import { useIsClient } from '@/hooks/useIsClient'
 import { MessageStats } from './MessageStats'
+import { MessageAttachments } from './MessageAttachments'
 import { SelectedModel } from '@/lib/stores/modelTabs'
 import { cn } from '@/lib/utils'
+import { getProviderIcon } from '@/components/ui/provider-icons'
 
 interface DynamicChatPanelProps {
   selectedModel: SelectedModel
@@ -69,15 +71,6 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case 'openai': return '🤖'
-      case 'anthropic': return '🧠'
-      case 'gemini': return '💎' 
-      case 'openrouter': return '🌐'
-      default: return '🔮'
-    }
-  }
 
   const getProviderColor = (provider: string) => {
     switch (provider) {
@@ -95,7 +88,7 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
       <div className={cn('flex flex-col h-full border border-border rounded-lg bg-background', className)}>
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{getProviderIcon(selectedModel.provider)}</span>
+            <div className="w-6 h-6">{getProviderIcon(selectedModel.provider, "w-6 h-6")}</div>
             <div>
               <h3 className="font-semibold text-sm">{selectedModel.model.name}</h3>
               <p className="text-xs text-muted-foreground">{selectedModel.provider}</p>
@@ -115,7 +108,7 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <span className="text-2xl flex-shrink-0">{getProviderIcon(selectedModel.provider)}</span>
+          <div className="w-6 h-6 flex-shrink-0">{getProviderIcon(selectedModel.provider, "w-6 h-6")}</div>
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-sm truncate">{selectedModel.model.name}</h3>
             <p className="text-xs text-muted-foreground">{providerConfig.name}</p>
@@ -163,13 +156,19 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
               
               <div
                 className={cn(
-                  'max-w-[80%] rounded-lg px-3 py-2 text-sm',
+                  'max-w-[80%] rounded-lg px-3 py-2 text-sm space-y-2',
                   message.role === 'user'
                     ? 'bg-primary text-primary-foreground ml-auto'
                     : 'bg-muted text-muted-foreground'
                 )}
               >
-                {message.content}
+                {message.attachments && (
+                  <MessageAttachments 
+                    attachments={message.attachments}
+                    className="mb-2"
+                  />
+                )}
+                {message.content && <div>{message.content}</div>}
                 <MessageStats message={message} />
               </div>
               
