@@ -1,14 +1,23 @@
 import { LLMProvider, ChatRequest, ChatResponse, StreamChunk, Model } from '../types'
 import { estimateTokens, calculateCost } from '../utils/tokenizer'
 
+// Fallback models when API is not available - updated with latest models
 export const anthropicModels: Model[] = [
   {
     id: 'claude-3-5-sonnet-20241022',
-    name: 'Claude 3.5 Sonnet',
+    name: 'Claude 3.5 Sonnet (Latest)',
     provider: 'anthropic',
     contextLength: 200000,
     inputCost: 0.003,
     outputCost: 0.015
+  },
+  {
+    id: 'claude-3-5-haiku-20241022',
+    name: 'Claude 3.5 Haiku',
+    provider: 'anthropic',
+    contextLength: 200000,
+    inputCost: 0.001,
+    outputCost: 0.005
   },
   {
     id: 'claude-3-opus-20240229',
@@ -17,6 +26,14 @@ export const anthropicModels: Model[] = [
     contextLength: 200000,
     inputCost: 0.015,
     outputCost: 0.075
+  },
+  {
+    id: 'claude-3-sonnet-20240229',
+    name: 'Claude 3 Sonnet',
+    provider: 'anthropic',
+    contextLength: 200000,
+    inputCost: 0.003,
+    outputCost: 0.015
   },
   {
     id: 'claude-3-haiku-20240307',
