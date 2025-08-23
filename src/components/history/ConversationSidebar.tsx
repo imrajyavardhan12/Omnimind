@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   MessageSquare, 
   Trash2, 
@@ -23,8 +23,21 @@ interface ConversationSidebarProps {
 
 export function ConversationSidebar({ className }: ConversationSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(true)
+  const [showContent, setShowContent] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const isClient = useIsClient()
+  
+  // Handle content visibility during transitions
+  useEffect(() => {
+    if (!isCollapsed) {
+      // Show content after a small delay when expanding
+      const timer = setTimeout(() => setShowContent(true), 150)
+      return () => clearTimeout(timer)
+    } else {
+      // Hide content immediately when collapsing
+      setShowContent(false)
+    }
+  }, [isCollapsed])
   
   const { 
     sessions, 
@@ -104,7 +117,7 @@ export function ConversationSidebar({ className }: ConversationSidebarProps) {
   // Expanded state - full sidebar
   return (
     <div className={cn('w-80 border-r border-border bg-background flex flex-col sidebar-transition', className)}>
-      <div className="sidebar-content">
+      <div className={cn('sidebar-content', showContent ? 'opacity-100' : 'opacity-0')}>
         {/* Header */}
         <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-3">

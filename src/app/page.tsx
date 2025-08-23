@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings, Square } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import { SessionStats } from '@/components/chat/SessionStats'
 import { ExportButton } from '@/components/chat/ExportButton'
@@ -10,16 +10,10 @@ import { ModelTabBar } from '@/components/chat/ModelTabBar'
 import { DynamicChatPanel } from '@/components/chat/DynamicChatPanel'
 import { TabifiedUnifiedInput } from '@/components/chat/TabifiedUnifiedInput'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
-import { useChatStore } from '@/lib/stores/chat'
-import { ProviderName } from '@/lib/types'
 
 export default function Home() {
   const [showSettings, setShowSettings] = useState(false)
   const { selectedModels } = useModelTabsStore()
-  const { isLoading, stopAllResponses } = useChatStore()
-  
-  // Check if any model is currently loading
-  const isAnyLoading = Object.values(isLoading).some(loading => loading)
   
   // Dynamic grid class - force all models into single row
   const getGridClass = (count: number) => {
@@ -59,19 +53,6 @@ export default function Home() {
           <div className="p-6 space-y-6">
             <div className="flex items-center justify-end">
               <div className="flex gap-2">
-                <button
-                  onClick={stopAllResponses}
-                  disabled={!isAnyLoading}
-                  className={`flex items-center gap-2 px-4 py-2 border rounded-md transition-colors ${
-                    isAnyLoading 
-                      ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90 border-destructive' 
-                      : 'border-border text-muted-foreground bg-muted/50 cursor-not-allowed opacity-50'
-                  }`}
-                  title={isAnyLoading ? "Stop all ongoing responses" : "No active responses to stop"}
-                >
-                  <Square className="w-4 h-4" />
-                  Stop All
-                </button>
                 <ExportButton />
                 <button
                   onClick={() => setShowSettings(true)}

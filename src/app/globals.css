@@ -72,23 +72,23 @@
 
   /* Smooth sidebar transitions */
   .sidebar-transition {
-    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: width;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     transform: translateZ(0);
   }
 
-  /* Prevent content jump during sidebar transition */
+  /* Prevent content flash during sidebar transition */
   .sidebar-transition * {
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     transform: translateZ(0);
   }
 
-  /* Ensure smooth content rendering */
+  /* Ensure smooth content rendering with no flash */
   .sidebar-content {
-    transition: opacity 0.2s ease-in-out 0.1s;
+    transition: opacity 0.2s ease-out;
     will-change: opacity;
   }
 
