@@ -5,9 +5,9 @@ import { ChatSession, Message, ProviderName } from '../types'
 interface ChatState {
   sessions: ChatSession[]
   activeSessionId: string | null
-  isLoading: Record<ProviderName, boolean>
+  isLoading: Record<string, boolean> // Changed to support model-specific loading
   visibleProviders: Record<ProviderName, boolean>
-  abortControllers: Record<ProviderName, AbortController | null>
+  abortControllers: Map<string, AbortController> // Changed to Map for model-specific controllers
   
   // Actions
   createSession: () => string
@@ -15,12 +15,12 @@ interface ChatState {
   addMessage: (sessionId: string, message: Message) => void
   updateMessage: (sessionId: string, messageId: string, updates: Partial<Message>) => void
   deleteSession: (sessionId: string) => void
-  setLoading: (provider: ProviderName, loading: boolean) => void
+  setLoading: (key: string, loading: boolean) => void
   getActiveSession: () => ChatSession | null
   toggleProviderVisibility: (provider: ProviderName) => void
   resetProviderVisibility: () => void
-  setAbortController: (provider: ProviderName, controller: AbortController | null) => void
-  stopResponse: (provider?: ProviderName) => void
+  setAbortController: (key: string, controller: AbortController | null) => void
+  stopResponse: (key?: string) => void
   stopAllResponses: () => void
 }
 
@@ -29,24 +29,14 @@ export const useChatStore = create<ChatState>()(
     (set, get) => ({
   sessions: [],
   activeSessionId: null,
-  isLoading: {
-    openai: false,
-    anthropic: false,
-    gemini: false,
-    openrouter: false
-  },
+  isLoading: {},
   visibleProviders: {
     openai: true,
     anthropic: true,
     gemini: true,
     openrouter: true
   },
-  abortControllers: {
-    openai: null,
-    anthropic: null,
-    gemini: null,
-    openrouter: null
-  },
+  abortControllers: new Map(),
 
   createSession: () => {
     const sessionId = crypto.randomUUID()
@@ -120,11 +110,11 @@ export const useChatStore = create<ChatState>()(
     }))
   },
 
-  setLoading: (provider: ProviderName, loading: boolean) => {
+  setLoading: (key: string, loading: boolean) => {
     set(state => ({
       isLoading: {
         ...state.isLoading,
-        [provider]: loading
+        [key]: loading
       }
     }))
   },
@@ -154,62 +144,65 @@ export const useChatStore = create<ChatState>()(
     })
   },
 
-  setAbortController: (provider: ProviderName, controller: AbortController | null) => {
-    set(state => ({
-      abortControllers: {
-        ...state.abortControllers,
-        [provider]: controller
+  setAbortController: (key: string, controller: AbortController | null) => {
+    set(state => {
+      const newControllers = new Map(state.abortControllers)
+      if (controller) {
+        newControllers.set(key, controller)
+      } else {
+        newControllers.delete(key)
       }
-    }))
+      return { abortControllers: newControllers }
+    })
   },
 
-  stopResponse: (provider?: ProviderName) => {
+  stopResponse: (key?: string) => {
     const state = get()
-    if (provider) {
-      // Stop specific provider
-      const controller = state.abortControllers[provider]
+    if (key) {
+      // Stop specific model
+      const controller = state.abortControllers.get(key)
       if (controller) {
+        console.log(`Aborting controller for ${key}`)
         controller.abort()
-        set(state => ({
-          abortControllers: {
-            ...state.abortControllers,
-            [provider]: null
-          },
-          isLoading: {
-            ...state.isLoading,
-            [provider]: false
+        set(state => {
+          const newControllers = new Map(state.abortControllers)
+          newControllers.delete(key)
+          return {
+            abortControllers: newControllers,
+            isLoading: {
+              ...state.isLoading,
+              [key]: false
+            }
           }
-        }))
+        })
       }
     }
   },
 
   stopAllResponses: () => {
     const state = get()
-    console.log('Stopping all responses, active controllers:', state.abortControllers)
+    console.log('Stopping all responses, active controllers:', state.abortControllers.size)
     
     // Abort all active controllers
-    Object.entries(state.abortControllers).forEach(([provider, controller]) => {
-      if (controller) {
-        console.log(`Aborting ${provider} controller`)
+    state.abortControllers.forEach((controller, key) => {
+      console.log(`Aborting controller for ${key}`)
+      try {
         controller.abort()
+      } catch (error) {
+        console.error(`Error aborting controller for ${key}:`, error)
       }
+    })
+    
+    // Clear all loading states
+    const clearedLoading: Record<string, boolean> = {}
+    Object.keys(state.isLoading).forEach(key => {
+      clearedLoading[key] = false
     })
     
     // Reset all controllers and loading states
     set({
-      abortControllers: {
-        openai: null,
-        anthropic: null,
-        gemini: null,
-        openrouter: null
-      },
-      isLoading: {
-        openai: false,
-        anthropic: false,
-        gemini: false,
-        openrouter: false
-      }
+      abortControllers: new Map(),
+      isLoading: clearedLoading
     })
   }
 }),
