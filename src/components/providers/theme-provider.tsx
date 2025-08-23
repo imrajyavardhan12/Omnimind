@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useThemeStore } from '@/lib/stores/theme'
+import { useThemeStore, type Theme } from '@/lib/stores/theme'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useThemeStore()
@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       document.documentElement.classList.add(resolvedTheme)
       
       // Update store
-      setTheme(storedTheme)
+      setTheme(storedTheme as Theme)
     }
 
     initializeTheme()

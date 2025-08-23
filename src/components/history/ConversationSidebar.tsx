@@ -22,7 +22,7 @@ interface ConversationSidebarProps {
 }
 
 export function ConversationSidebar({ className }: ConversationSidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const isClient = useIsClient()
   

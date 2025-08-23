@@ -186,9 +186,12 @@ export const useChatStore = create<ChatState>()(
 
   stopAllResponses: () => {
     const state = get()
+    console.log('Stopping all responses, active controllers:', state.abortControllers)
+    
     // Abort all active controllers
     Object.entries(state.abortControllers).forEach(([provider, controller]) => {
       if (controller) {
+        console.log(`Aborting ${provider} controller`)
         controller.abort()
       }
     })

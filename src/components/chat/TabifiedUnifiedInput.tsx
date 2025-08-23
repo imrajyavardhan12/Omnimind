@@ -65,6 +65,9 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
 
     // Send to each model individually with direct API calls to avoid hook conflicts
     const sendPromises = activeModels.map(async (selectedModel) => {
+      // Create assistant message with correct model ID (outside try-catch for error handling)
+      const assistantMessageId = crypto.randomUUID()
+      
       try {
         console.log(`Sending to ${selectedModel.model.name} (${selectedModel.model.id}) via ${selectedModel.provider}`)
         
@@ -73,9 +76,6 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
         if (selectedModel.settings.systemPrompt.trim()) {
           messageToSend = `${selectedModel.settings.systemPrompt}\n\nUser: ${message}`
         }
-        
-        // Create assistant message with correct model ID
-        const assistantMessageId = crypto.randomUUID()
         const assistantMessage = {
           id: assistantMessageId,
           role: 'assistant' as const,
@@ -93,13 +93,16 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
         const abortController = new AbortController()
         useChatStore.getState().setAbortController(selectedModel.provider, abortController)
         
+        // Log when controller is set
+        console.log(`Set abort controller for ${selectedModel.provider}:`, abortController)
+        
         // Make direct API call with specific model
         const response = await fetch('/api/chat', {
           method: 'POST',
           signal: abortController.signal,
           headers: {
             'Content-Type': 'application/json',
-            [`x-api-key-${selectedModel.provider}`]: useSettingsStore.getState().getApiKey(selectedModel.provider)
+            [`x-api-key-${selectedModel.provider}`]: useSettingsStore.getState().getApiKey(selectedModel.provider) || ''
           },
           body: JSON.stringify({
             messages: [...useChatStore.getState().getActiveSession()?.messages || [], {
@@ -123,6 +126,12 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
           let fullContent = ''
           
           while (true) {
+            // Check if aborted before each read
+            if (abortController.signal.aborted) {
+              console.log(`${selectedModel.provider} stream aborted`)
+              break
+            }
+            
             const { done, value } = await reader.read()
             if (done) break
             
@@ -295,23 +304,39 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
             )}
           </div>
 
-          <button
-            onClick={handleSend}
-            disabled={(!input.trim() && attachments.length === 0) || activeModels.length === 0 || isAnyLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isAnyLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                Send to All
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={stopAllResponses}
+              disabled={!isAnyLoading}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-md transition-colors",
+                isAnyLoading 
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" 
+                  : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+              )}
+            >
+              <Square className="w-4 h-4" />
+              Stop All
+            </button>
+            
+            <button
+              onClick={handleSend}
+              disabled={(!input.trim() && attachments.length === 0) || activeModels.length === 0 || isAnyLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isAnyLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  Send
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Quick Actions */}

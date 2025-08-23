@@ -79,24 +79,53 @@ export async function POST(request: NextRequest) {
       
       const streamResponse = new ReadableStream({
         async start(controller) {
+          let isStreamClosed = false
+          
+          const closeStream = () => {
+            if (!isStreamClosed && controller.desiredSize !== null) {
+              try {
+                controller.close()
+                isStreamClosed = true
+              } catch (error) {
+                // Controller might already be closed, ignore
+              }
+            }
+          }
+
           try {
-            for await (const chunk of providerInstance.stream(chatRequest, apiKey)) {
-              if (controller.desiredSize === null) {
-                // Controller is already closed
+            for await (const chunk of providerInstance.stream(chatRequest, apiKey, request.signal)) {
+              if (isStreamClosed || controller.desiredSize === null) {
                 break
               }
               
-              const data = JSON.stringify(chunk)
-              controller.enqueue(encoder.encode(`data: ${data}\n\n`))
-              
-              if (chunk.done) {
-                controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+              try {
+                const data = JSON.stringify(chunk)
+                controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+                
+                if (chunk.done) {
+                  controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+                  closeStream()
+                  break
+                }
+              } catch (enqueueError) {
+                if (!isStreamClosed) {
+                  console.error('Enqueue error:', enqueueError)
+                  closeStream()
+                }
                 break
               }
             }
           } catch (error) {
             console.error('Streaming error:', error)
-            if (controller.desiredSize !== null) {
+            
+            // Check if it's an abort error (user stopped the request)
+            if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
+              console.log('Stream aborted by user')
+              closeStream()
+              return
+            }
+            
+            if (!isStreamClosed && controller.desiredSize !== null) {
               try {
                 const errorChunk = {
                   id: crypto.randomUUID(),
@@ -105,17 +134,11 @@ export async function POST(request: NextRequest) {
                 }
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorChunk)}\n\n`))
               } catch (controllerError) {
-                console.error('Controller error:', controllerError)
+                console.error('Error sending error chunk:', controllerError)
               }
             }
           } finally {
-            try {
-              if (controller.desiredSize !== null) {
-                controller.close()
-              }
-            } catch (closeError) {
-              console.error('Controller close error:', closeError)
-            }
+            closeStream()
           }
         }
       })
@@ -129,7 +152,7 @@ export async function POST(request: NextRequest) {
       })
     } else {
       // Handle non-streaming response
-      const response = await providerInstance.complete(chatRequest, apiKey)
+      const response = await providerInstance.complete(chatRequest, apiKey, request.signal)
       return NextResponse.json(response)
     }
   } catch (error) {

@@ -9,6 +9,7 @@ import { useChat } from '@/hooks/useChat'
 import { useIsClient } from '@/hooks/useIsClient'
 import { MessageStats } from './MessageStats'
 import { MessageAttachments } from './MessageAttachments'
+import { MarkdownRenderer } from './MarkdownRenderer'
 import { SelectedModel } from '@/lib/stores/modelTabs'
 import { cn } from '@/lib/utils'
 import { getProviderIcon } from '@/components/ui/provider-icons'
@@ -168,7 +169,18 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
                     className="mb-2"
                   />
                 )}
-                {message.content && <div>{message.content}</div>}
+                {message.content && (
+                  <>
+                    {message.role === 'assistant' ? (
+                      <MarkdownRenderer 
+                        content={message.content}
+                        className="text-sm"
+                      />
+                    ) : (
+                      <div className="whitespace-pre-wrap">{message.content}</div>
+                    )}
+                  </>
+                )}
                 <MessageStats message={message} />
               </div>
               

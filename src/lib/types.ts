@@ -74,8 +74,8 @@ export interface LLMProvider {
   name: ProviderName
   models: Model[]
   validateAPIKey(apiKey: string): Promise<boolean>
-  complete(request: ChatRequest, apiKey: string): Promise<ChatResponse>
-  stream(request: ChatRequest, apiKey: string): AsyncGenerator<StreamChunk>
+  complete(request: ChatRequest, apiKey: string, signal?: AbortSignal): Promise<ChatResponse>
+  stream(request: ChatRequest, apiKey: string, signal?: AbortSignal): AsyncGenerator<StreamChunk>
 }
 
 export interface ChatSession {

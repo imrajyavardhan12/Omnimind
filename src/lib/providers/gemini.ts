@@ -1,10 +1,10 @@
 import { LLMProvider, ChatRequest, ChatResponse, StreamChunk, Model } from '../types'
 import { estimateTokens, calculateCost } from '../utils/tokenizer'
 
-// Fallback models when API is not available - updated with latest models
+// Fallback models when API is not available - using correct model IDs
 export const geminiModels: Model[] = [
   {
-    id: 'gemini-1.5-pro-latest',
+    id: 'gemini-1.5-pro',
     name: 'Gemini 1.5 Pro',
     provider: 'gemini',
     contextLength: 2097152, // 2M tokens
@@ -55,12 +55,13 @@ export class GeminiProvider implements LLMProvider {
     }
   }
 
-  async complete(request: ChatRequest, apiKey: string): Promise<ChatResponse> {
+  async complete(request: ChatRequest, apiKey: string, signal?: AbortSignal): Promise<ChatResponse> {
     // Convert messages to Gemini format
     const contents = this.convertMessagesToGeminiFormat(request.messages)
     
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${request.model}:generateContent?key=${apiKey}`, {
       method: 'POST',
+      signal,
       headers: {
         'Content-Type': 'application/json'
       },
@@ -74,16 +75,26 @@ export class GeminiProvider implements LLMProvider {
     })
 
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('Gemini API error:', response.status, errorText)
+      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`)
     }
 
     const data = await response.json()
+    console.log('Gemini API response:', data)
     
     if (!data.candidates || data.candidates.length === 0) {
-      throw new Error('No response from Gemini API')
+      console.error('No candidates in response:', data)
+      throw new Error('No response from Gemini API - no candidates found')
     }
 
     const candidate = data.candidates[0]
+    
+    // Check for safety filters or blocked content
+    if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'RECITATION') {
+      throw new Error(`Content blocked by Gemini safety filters: ${candidate.finishReason}`)
+    }
+    
     const content = candidate.content?.parts?.[0]?.text || ''
     
     // Estimate tokens since Gemini doesn't always provide usage info
@@ -105,12 +116,13 @@ export class GeminiProvider implements LLMProvider {
     }
   }
 
-  async* stream(request: ChatRequest, apiKey: string): AsyncGenerator<StreamChunk> {
+  async* stream(request: ChatRequest, apiKey: string, signal?: AbortSignal): AsyncGenerator<StreamChunk> {
     // Convert messages to Gemini format
     const contents = this.convertMessagesToGeminiFormat(request.messages)
     
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${request.model}:streamGenerateContent?key=${apiKey}`, {
       method: 'POST',
+      signal,
       headers: {
         'Content-Type': 'application/json'
       },
@@ -134,6 +146,9 @@ export class GeminiProvider implements LLMProvider {
 
     const decoder = new TextDecoder()
     let buffer = ''
+    let braceCount = 0
+    let inJsonObject = false
+    let jsonBuffer = ''
 
     try {
       while (true) {
@@ -141,35 +156,74 @@ export class GeminiProvider implements LLMProvider {
         if (done) break
 
         buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (line.trim() && line.startsWith('data: ')) {
-            const data = line.slice(6)
-            
-            try {
-              const parsed = JSON.parse(data)
-              
-              if (parsed.candidates && parsed.candidates[0]?.content?.parts?.[0]?.text) {
-                yield {
-                  id: crypto.randomUUID(),
-                  content: parsed.candidates[0].content.parts[0].text,
-                  done: false
+        
+        // Process character by character to find complete JSON objects
+        for (let i = 0; i < buffer.length; i++) {
+          const char = buffer[i]
+          
+          if (char === '{') {
+            if (braceCount === 0) {
+              inJsonObject = true
+              jsonBuffer = ''
+            }
+            braceCount++
+          }
+          
+          if (inJsonObject) {
+            jsonBuffer += char
+          }
+          
+          if (char === '}') {
+            braceCount--
+            if (braceCount === 0 && inJsonObject) {
+              // We have a complete JSON object
+              try {
+                const parsed = JSON.parse(jsonBuffer)
+                
+                if (parsed.candidates && parsed.candidates[0]) {
+                  const candidate = parsed.candidates[0]
+                  
+                  // Check for safety blocks
+                  if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'RECITATION') {
+                    yield {
+                      id: crypto.randomUUID(),
+                      content: 'Content blocked by safety filters',
+                      done: true
+                    }
+                    return
+                  }
+                  
+                  // Stream content if available
+                  if (candidate.content?.parts?.[0]?.text) {
+                    yield {
+                      id: crypto.randomUUID(),
+                      content: candidate.content.parts[0].text,
+                      done: false
+                    }
+                  }
+                  
+                  // Check for completion
+                  if (candidate.finishReason && candidate.finishReason === 'STOP') {
+                    yield {
+                      id: crypto.randomUUID(),
+                      content: '',
+                      done: true
+                    }
+                    return
+                  }
                 }
-              } else if (parsed.candidates && parsed.candidates[0]?.finishReason) {
-                yield {
-                  id: crypto.randomUUID(),
-                  content: '',
-                  done: true
-                }
-                return
+              } catch (error) {
+                console.error('Failed to parse Gemini stream JSON:', error)
               }
-            } catch (error) {
-              console.error('Failed to parse Gemini SSE data:', error)
+              
+              inJsonObject = false
+              jsonBuffer = ''
             }
           }
         }
+        
+        // Clear the processed buffer
+        buffer = ''
       }
     } finally {
       reader.releaseLock()
@@ -178,18 +232,27 @@ export class GeminiProvider implements LLMProvider {
 
   private convertMessagesToGeminiFormat(messages: any[]) {
     const contents = []
+    let systemPrompt = ''
     
+    // Extract system message if it exists
+    const systemMessage = messages.find(m => m.role === 'system')
+    if (systemMessage) {
+      systemPrompt = systemMessage.content + '\n\n'
+    }
+    
+    // Convert other messages
     for (const message of messages) {
       if (message.role === 'system') {
-        // Gemini doesn't have a system role, so we'll add it as the first user message
-        contents.push({
-          role: 'user',
-          parts: [{ text: `System: ${message.content}` }]
-        })
+        continue // Already handled above
       } else if (message.role === 'user') {
+        // Add system prompt to first user message
+        const content = contents.length === 0 && systemPrompt 
+          ? systemPrompt + message.content 
+          : message.content
+          
         contents.push({
           role: 'user',
-          parts: [{ text: message.content }]
+          parts: [{ text: content }]
         })
       } else if (message.role === 'assistant') {
         contents.push({
@@ -197,6 +260,14 @@ export class GeminiProvider implements LLMProvider {
           parts: [{ text: message.content }]
         })
       }
+    }
+    
+    // Ensure we have at least one message
+    if (contents.length === 0) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: systemPrompt || 'Hello' }]
+      })
     }
     
     return contents
