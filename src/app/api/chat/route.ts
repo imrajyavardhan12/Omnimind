@@ -77,24 +77,42 @@ export async function POST(request: NextRequest) {
       // Handle streaming response
       const encoder = new TextEncoder()
       
+      // Create an abort controller that follows the request's abort signal
+      const abortController = new AbortController()
+      
+      // Listen to the request's abort signal
+      request.signal.addEventListener('abort', () => {
+        console.log(`Request aborted for ${provider}`)
+        abortController.abort()
+      })
+      
       const streamResponse = new ReadableStream({
         async start(controller) {
           let isStreamClosed = false
           
           const closeStream = () => {
-            if (!isStreamClosed && controller.desiredSize !== null) {
+            if (!isStreamClosed) {
               try {
                 controller.close()
                 isStreamClosed = true
               } catch (error) {
                 // Controller might already be closed, ignore
+                console.log('Stream already closed')
               }
             }
           }
 
           try {
-            for await (const chunk of providerInstance.stream(chatRequest, apiKey, request.signal)) {
-              if (isStreamClosed || controller.desiredSize === null) {
+            // Pass the abort signal to the provider's stream method
+            for await (const chunk of providerInstance.stream(chatRequest, apiKey, abortController.signal)) {
+              // Check if the request was aborted
+              if (abortController.signal.aborted || request.signal.aborted) {
+                console.log(`Stream aborted for ${provider}`)
+                closeStream()
+                break
+              }
+              
+              if (isStreamClosed) {
                 break
               }
               
@@ -120,12 +138,12 @@ export async function POST(request: NextRequest) {
             
             // Check if it's an abort error (user stopped the request)
             if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
-              console.log('Stream aborted by user')
+              console.log(`Stream aborted by user for ${provider}`)
               closeStream()
               return
             }
             
-            if (!isStreamClosed && controller.desiredSize !== null) {
+            if (!isStreamClosed) {
               try {
                 const errorChunk = {
                   id: crypto.randomUUID(),
@@ -140,6 +158,10 @@ export async function POST(request: NextRequest) {
           } finally {
             closeStream()
           }
+        },
+        cancel() {
+          console.log(`Stream cancelled for ${provider}`)
+          abortController.abort()
         }
       })
 
