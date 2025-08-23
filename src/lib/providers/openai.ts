@@ -56,9 +56,10 @@ export class OpenAIProvider implements LLMProvider {
     }
   }
 
-  async complete(request: ChatRequest, apiKey: string): Promise<ChatResponse> {
+  async complete(request: ChatRequest, apiKey: string, signal?: AbortSignal): Promise<ChatResponse> {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
+      signal,
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
@@ -132,9 +133,10 @@ export class OpenAIProvider implements LLMProvider {
     }
   }
 
-  async* stream(request: ChatRequest, apiKey: string): AsyncGenerator<StreamChunk> {
+  async* stream(request: ChatRequest, apiKey: string, signal?: AbortSignal): AsyncGenerator<StreamChunk> {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
+      signal,
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
@@ -195,6 +197,13 @@ export class OpenAIProvider implements LLMProvider {
 
     try {
       while (true) {
+        // Check if aborted before reading
+        if (signal?.aborted) {
+          console.log('OpenAI stream aborted')
+          reader.releaseLock()
+          break
+        }
+
         const { done, value } = await reader.read()
         if (done) break
 
@@ -203,6 +212,13 @@ export class OpenAIProvider implements LLMProvider {
         buffer = lines.pop() || ''
 
         for (const line of lines) {
+          // Check abort signal in the loop
+          if (signal?.aborted) {
+            console.log('OpenAI stream aborted during processing')
+            reader.releaseLock()
+            return
+          }
+
           if (line.startsWith('data: ')) {
             const data = line.slice(6)
             if (data === '[DONE]') {
@@ -230,6 +246,12 @@ export class OpenAIProvider implements LLMProvider {
           }
         }
       }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('OpenAI stream aborted with error')
+        return
+      }
+      throw error
     } finally {
       reader.releaseLock()
     }
