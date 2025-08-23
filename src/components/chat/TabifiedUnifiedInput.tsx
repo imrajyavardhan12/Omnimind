@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { Send, Loader2, Square } from 'lucide-react'
 import { useSettingsStore } from '@/lib/stores/settings'
 import { useChatStore } from '@/lib/stores/chat'
@@ -20,22 +20,19 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
   const { providers } = useSettingsStore()
   const { createSession, activeSessionId, isLoading, setAbortController, stopAllResponses } = useChatStore()
   const { selectedModels } = useModelTabsStore()
+  const activeRequestsRef = useRef<Set<string>>(new Set())
   
   // Get active models (both enabled providers AND selected in tabs)
   const activeModels = selectedModels.filter(sm => 
     providers[sm.provider]?.enabled
   )
   
-  // Set up chat hooks for each active provider (skip adding user message since we add it once)
-  const chatHooks = {
-    openai: useChat({ provider: 'openai', skipAddingUserMessage: true }),
-    anthropic: useChat({ provider: 'anthropic', skipAddingUserMessage: true }),
-    gemini: useChat({ provider: 'gemini', skipAddingUserMessage: true }),
-    openrouter: useChat({ provider: 'openrouter', skipAddingUserMessage: true })
-  }
-
-  // Only check loading state for selected models' providers
-  const isAnyLoading = activeModels.some(model => isLoading[model.provider])
+  // Check if any model is loading
+  const isAnyLoading = activeRequestsRef.current.size > 0 || 
+    activeModels.some(model => {
+      const key = `${model.provider}-${model.model.id}`
+      return isLoading[key] || isLoading[model.provider]
+    })
 
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || activeModels.length === 0 || isAnyLoading) return
@@ -65,17 +62,22 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
 
     // Send to each model individually with direct API calls to avoid hook conflicts
     const sendPromises = activeModels.map(async (selectedModel) => {
-      // Create assistant message with correct model ID (outside try-catch for error handling)
+      // Create unique key for this model instance
+      const modelKey = `${selectedModel.provider}-${selectedModel.model.id}-${Date.now()}`
       const assistantMessageId = crypto.randomUUID()
       
+      // Track active request
+      activeRequestsRef.current.add(modelKey)
+      
       try {
-        console.log(`Sending to ${selectedModel.model.name} (${selectedModel.model.id}) via ${selectedModel.provider}`)
+        console.log(`Sending to ${selectedModel.model.name} (${selectedModel.model.id}) via ${selectedModel.provider} with key ${modelKey}`)
         
         // Add system prompt to message if it exists
         let messageToSend = message
         if (selectedModel.settings.systemPrompt.trim()) {
           messageToSend = `${selectedModel.settings.systemPrompt}\n\nUser: ${message}`
         }
+        
         const assistantMessage = {
           id: assistantMessageId,
           role: 'assistant' as const,
@@ -86,15 +88,14 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
         }
         useChatStore.getState().addMessage(sessionId, assistantMessage)
         
-        // Set loading for this provider
-        useChatStore.getState().setLoading(selectedModel.provider, true)
+        // Set loading for this specific model
+        useChatStore.getState().setLoading(modelKey, true)
         
-        // Create abort controller for this request
+        // Create abort controller for this specific request
         const abortController = new AbortController()
-        useChatStore.getState().setAbortController(selectedModel.provider, abortController)
+        useChatStore.getState().setAbortController(modelKey, abortController)
         
-        // Log when controller is set
-        console.log(`Set abort controller for ${selectedModel.provider}:`, abortController)
+        console.log(`Set abort controller for ${modelKey}`)
         
         // Make direct API call with specific model
         const response = await fetch('/api/chat', {
@@ -125,51 +126,63 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
           let buffer = ''
           let fullContent = ''
           
-          while (true) {
-            // Check if aborted before each read
-            if (abortController.signal.aborted) {
-              console.log(`${selectedModel.provider} stream aborted`)
-              break
-            }
-            
-            const { done, value } = await reader.read()
-            if (done) break
-            
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop() || ''
-            
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6)
-                if (data === '[DONE]') break
+          try {
+            while (true) {
+              // Check if aborted before each read
+              if (abortController.signal.aborted) {
+                console.log(`${modelKey} stream aborted`)
+                reader.cancel()
+                break
+              }
+              
+              const { done, value } = await reader.read()
+              if (done) break
+              
+              buffer += decoder.decode(value, { stream: true })
+              const lines = buffer.split('\n')
+              buffer = lines.pop() || ''
+              
+              for (const line of lines) {
+                // Check if aborted during processing
+                if (abortController.signal.aborted) {
+                  console.log(`${modelKey} stream aborted during processing`)
+                  reader.cancel()
+                  break
+                }
                 
-                try {
-                  const parsed = JSON.parse(data)
-                  if (parsed.content) {
-                    fullContent += parsed.content
-                    // Update message with content and any available metadata
-                    const updateData: any = { content: fullContent }
-                    if (parsed.tokens) updateData.tokens = parsed.tokens
-                    if (parsed.cost) updateData.cost = parsed.cost
-                    
-                    useChatStore.getState().updateMessage(sessionId, assistantMessageId, updateData)
-                  }
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6)
+                  if (data === '[DONE]') break
                   
-                  // Handle final message with complete stats
-                  if (parsed.done || parsed.finish_reason) {
-                    console.log('Final message stats:', { tokens: parsed.tokens, cost: parsed.cost })
-                    const updateData: any = { content: fullContent }
-                    if (parsed.tokens) updateData.tokens = parsed.tokens
-                    if (parsed.cost) updateData.cost = parsed.cost
+                  try {
+                    const parsed = JSON.parse(data)
+                    if (parsed.content) {
+                      fullContent += parsed.content
+                      // Update message with content and any available metadata
+                      const updateData: any = { content: fullContent }
+                      if (parsed.tokens) updateData.tokens = parsed.tokens
+                      if (parsed.cost) updateData.cost = parsed.cost
+                      
+                      useChatStore.getState().updateMessage(sessionId, assistantMessageId, updateData)
+                    }
                     
-                    useChatStore.getState().updateMessage(sessionId, assistantMessageId, updateData)
+                    // Handle final message with complete stats
+                    if (parsed.done || parsed.finish_reason) {
+                      console.log('Final message stats:', { tokens: parsed.tokens, cost: parsed.cost })
+                      const updateData: any = { content: fullContent }
+                      if (parsed.tokens) updateData.tokens = parsed.tokens
+                      if (parsed.cost) updateData.cost = parsed.cost
+                      
+                      useChatStore.getState().updateMessage(sessionId, assistantMessageId, updateData)
+                    }
+                  } catch (e) {
+                    console.error('Error parsing stream data:', e, 'Raw data:', data)
                   }
-                } catch (e) {
-                  console.error('Error parsing stream data:', e, 'Raw data:', data)
                 }
               }
             }
+          } finally {
+            reader.releaseLock()
           }
         } else {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -196,24 +209,24 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
           }
         }, 1000) // Wait 1 second after completion
         
-        useChatStore.getState().setLoading(selectedModel.provider, false)
-        useChatStore.getState().setAbortController(selectedModel.provider, null)
       } catch (error) {
         console.error(`Error sending to ${selectedModel.provider} (${selectedModel.model.name}):`, error)
         
         // Check if error is due to abort
         if (error instanceof Error && error.name === 'AbortError') {
           useChatStore.getState().updateMessage(sessionId, assistantMessageId, {
-            content: 'Response stopped by user'
+            content: fullContent || 'Response stopped by user'
           })
         } else {
           useChatStore.getState().updateMessage(sessionId, assistantMessageId, {
             content: 'Error: Failed to get response'
           })
         }
-        
-        useChatStore.getState().setLoading(selectedModel.provider, false)
-        useChatStore.getState().setAbortController(selectedModel.provider, null)
+      } finally {
+        // Clean up for this specific model
+        useChatStore.getState().setLoading(modelKey, false)
+        useChatStore.getState().setAbortController(modelKey, null)
+        activeRequestsRef.current.delete(modelKey)
       }
     })
 
