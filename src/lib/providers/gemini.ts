@@ -1,10 +1,10 @@
 import { LLMProvider, ChatRequest, ChatResponse, StreamChunk, Model } from '../types'
 import { estimateTokens, calculateCost } from '../utils/tokenizer'
 
-// Fallback models when API is not available - using correct model IDs
+// Fallback models when API is not available - updated with latest models
 export const geminiModels: Model[] = [
   {
-    id: 'gemini-1.5-pro',
+    id: 'gemini-1.5-pro-latest',
     name: 'Gemini 1.5 Pro',
     provider: 'gemini',
     contextLength: 2097152, // 2M tokens
@@ -75,26 +75,16 @@ export class GeminiProvider implements LLMProvider {
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Gemini API error:', response.status, errorText)
-      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`)
+      throw new Error(`Gemini API error: ${response.statusText}`)
     }
 
     const data = await response.json()
-    console.log('Gemini API response:', data)
     
     if (!data.candidates || data.candidates.length === 0) {
-      console.error('No candidates in response:', data)
-      throw new Error('No response from Gemini API - no candidates found')
+      throw new Error('No response from Gemini API')
     }
 
     const candidate = data.candidates[0]
-    
-    // Check for safety filters or blocked content
-    if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'RECITATION') {
-      throw new Error(`Content blocked by Gemini safety filters: ${candidate.finishReason}`)
-    }
-    
     const content = candidate.content?.parts?.[0]?.text || ''
     
     // Estimate tokens since Gemini doesn't always provide usage info
@@ -146,85 +136,63 @@ export class GeminiProvider implements LLMProvider {
 
     const decoder = new TextDecoder()
     let buffer = ''
-    let braceCount = 0
-    let inJsonObject = false
-    let jsonBuffer = ''
 
     try {
       while (true) {
+        // Check if aborted before reading
+        if (signal?.aborted) {
+          console.log('Gemini stream aborted')
+          reader.releaseLock()
+          break
+        }
+
         const { done, value } = await reader.read()
         if (done) break
 
         buffer += decoder.decode(value, { stream: true })
-        
-        // Process character by character to find complete JSON objects
-        for (let i = 0; i < buffer.length; i++) {
-          const char = buffer[i]
-          
-          if (char === '{') {
-            if (braceCount === 0) {
-              inJsonObject = true
-              jsonBuffer = ''
-            }
-            braceCount++
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          // Check abort signal in the loop
+          if (signal?.aborted) {
+            console.log('Gemini stream aborted during processing')
+            reader.releaseLock()
+            return
           }
-          
-          if (inJsonObject) {
-            jsonBuffer += char
-          }
-          
-          if (char === '}') {
-            braceCount--
-            if (braceCount === 0 && inJsonObject) {
-              // We have a complete JSON object
-              try {
-                const parsed = JSON.parse(jsonBuffer)
-                
-                if (parsed.candidates && parsed.candidates[0]) {
-                  const candidate = parsed.candidates[0]
-                  
-                  // Check for safety blocks
-                  if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'RECITATION') {
-                    yield {
-                      id: crypto.randomUUID(),
-                      content: 'Content blocked by safety filters',
-                      done: true
-                    }
-                    return
-                  }
-                  
-                  // Stream content if available
-                  if (candidate.content?.parts?.[0]?.text) {
-                    yield {
-                      id: crypto.randomUUID(),
-                      content: candidate.content.parts[0].text,
-                      done: false
-                    }
-                  }
-                  
-                  // Check for completion
-                  if (candidate.finishReason && candidate.finishReason === 'STOP') {
-                    yield {
-                      id: crypto.randomUUID(),
-                      content: '',
-                      done: true
-                    }
-                    return
-                  }
-                }
-              } catch (error) {
-                console.error('Failed to parse Gemini stream JSON:', error)
-              }
+
+          if (line.trim() && line.startsWith('data: ')) {
+            const data = line.slice(6)
+            
+            try {
+              const parsed = JSON.parse(data)
               
-              inJsonObject = false
-              jsonBuffer = ''
+              if (parsed.candidates && parsed.candidates[0]?.content?.parts?.[0]?.text) {
+                yield {
+                  id: crypto.randomUUID(),
+                  content: parsed.candidates[0].content.parts[0].text,
+                  done: false
+                }
+              } else if (parsed.candidates && parsed.candidates[0]?.finishReason) {
+                yield {
+                  id: crypto.randomUUID(),
+                  content: '',
+                  done: true
+                }
+                return
+              }
+            } catch (error) {
+              console.error('Failed to parse Gemini SSE data:', error)
             }
           }
         }
-        
-        // Clear the processed buffer
-        buffer = ''
       }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Gemini stream aborted with error')
+        return
+      }
+      throw error
     } finally {
       reader.releaseLock()
     }
@@ -232,27 +200,18 @@ export class GeminiProvider implements LLMProvider {
 
   private convertMessagesToGeminiFormat(messages: any[]) {
     const contents = []
-    let systemPrompt = ''
     
-    // Extract system message if it exists
-    const systemMessage = messages.find(m => m.role === 'system')
-    if (systemMessage) {
-      systemPrompt = systemMessage.content + '\n\n'
-    }
-    
-    // Convert other messages
     for (const message of messages) {
       if (message.role === 'system') {
-        continue // Already handled above
-      } else if (message.role === 'user') {
-        // Add system prompt to first user message
-        const content = contents.length === 0 && systemPrompt 
-          ? systemPrompt + message.content 
-          : message.content
-          
+        // Gemini doesn't have a system role, so we'll add it as the first user message
         contents.push({
           role: 'user',
-          parts: [{ text: content }]
+          parts: [{ text: `System: ${message.content}` }]
+        })
+      } else if (message.role === 'user') {
+        contents.push({
+          role: 'user',
+          parts: [{ text: message.content }]
         })
       } else if (message.role === 'assistant') {
         contents.push({
@@ -260,14 +219,6 @@ export class GeminiProvider implements LLMProvider {
           parts: [{ text: message.content }]
         })
       }
-    }
-    
-    // Ensure we have at least one message
-    if (contents.length === 0) {
-      contents.push({
-        role: 'user',
-        parts: [{ text: systemPrompt || 'Hello' }]
-      })
     }
     
     return contents
