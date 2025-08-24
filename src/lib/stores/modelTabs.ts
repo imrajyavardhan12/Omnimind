@@ -55,31 +55,7 @@ export const useModelTabsStore = create<ModelTabsState>()(
       },
       
       selectedModels: [
-        // Default selection - start with 4 different models
-        {
-          id: 'tab-1',
-          model: openaiModels.find(m => m.id === 'gpt-4') || openaiModels[0],
-          provider: 'openai',
-          settings: { temperature: 0.7, maxTokens: 1000, systemPrompt: '' }
-        },
-        {
-          id: 'tab-2', 
-          model: anthropicModels.find(m => m.id === 'claude-3-5-sonnet-20241022') || anthropicModels[0],
-          provider: 'anthropic',
-          settings: { temperature: 0.7, maxTokens: 1000, systemPrompt: '' }
-        },
-        {
-          id: 'tab-3',
-          model: geminiModels.find(m => m.id === 'gemini-1.5-pro') || geminiModels[0],
-          provider: 'gemini',
-          settings: { temperature: 0.7, maxTokens: 1000, systemPrompt: '' }
-        },
-        {
-          id: 'tab-4',
-          model: openrouterModels.find(m => m.id === 'meta-llama/llama-3.1-70b-instruct') || openrouterModels[0],
-          provider: 'openrouter',
-          settings: { temperature: 0.7, maxTokens: 1000, systemPrompt: '' }
-        }
+        // Start with no models selected - users choose what they want to compare
       ],
       maxModels: 5,
 
