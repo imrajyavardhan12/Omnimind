@@ -67,19 +67,29 @@ const CodeBlock = ({ className, children }: CodeBlockProps) => {
 // Preprocess content to remove thinking tags and other unwanted elements
 const preprocessContent = (content: string): string => {
   // Remove all variants of thinking tags more comprehensively
-  return content
-    // Remove antml:thinking tags
+  let cleanedContent = content
+    // Remove antml:thinking tags (most specific first)
     .replace(/<thinking[^>]*>[\s\S]*?<\/antml:thinking>/gi, '')
     // Remove thinking tags  
     .replace(/<thinking[^>]*>[\s\S]*?<\/thinking>/gi, '')
     // Remove think tags (both self-closing and paired)
-    .replace(/<think[^>]*\/>[\s\S]*?/gi, '')
+    .replace(/<think[^>]*\/>/gi, '')
     .replace(/<think[^>]*>[\s\S]*?<\/think>/gi, '')
     // Remove any standalone think tags that might remain
     .replace(/<\/?think[^>]*>/gi, '')
     .replace(/<\/?thinking[^>]*>/gi, '')
     .replace(/<\/?antml:thinking[^>]*>/gi, '')
+    // Extra cleanup - remove any remaining XML-style thinking tags
+    .replace(/&lt;thinking[^&]*&gt;[\s\S]*?&lt;\/thinking&gt;/gi, '')
+    .replace(/&lt;think[^&]*&gt;[\s\S]*?&lt;\/think&gt;/gi, '')
     .trim()
+  
+  // Log if we find any remaining think tags for debugging
+  if (cleanedContent.match(/<\/?think[^>]*>/i) || cleanedContent.match(/think[^>]*>/i)) {
+    console.warn('Remaining think tags detected:', cleanedContent.substring(0, 200))
+  }
+  
+  return cleanedContent
 }
 
 export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererProps) => {
@@ -227,11 +237,6 @@ export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererPr
               {children}
             </em>
           ),
-
-          // Explicitly ignore thinking-related tags
-          think: () => null,
-          thinking: () => null,
-          'antml:thinking': () => null,
         }}
       >
         {cleanedContent}
