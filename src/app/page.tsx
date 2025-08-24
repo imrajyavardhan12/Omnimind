@@ -87,7 +87,7 @@ export default function Home() {
                   <div className="text-muted-foreground">
                     <p className="text-lg mb-2">No models selected</p>
                     <p className="text-sm">
-                      Click "Add Model" in the tab bar above to start comparing AI responses
+                      Click &quot;Add Model&quot; in the tab bar above to start comparing AI responses
                     </p>
                   </div>
                 </div>

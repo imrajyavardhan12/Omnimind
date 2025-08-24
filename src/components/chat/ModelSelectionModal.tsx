@@ -40,7 +40,7 @@ export function ModelSelectionModal({ isOpen, onClose }: ModelSelectionModalProp
       ...(openrouterModels.models.length > 0 ? openrouterModels.models : getAllAvailableModels().filter(m => m.provider === 'openrouter'))
     ]
     setDynamicModels(allDynamicModels)
-  }, [openaiModels.models, anthropicModels.models, geminiModels.models, openrouterModels.models])
+  }, [openaiModels.models, anthropicModels.models, geminiModels.models, openrouterModels.models, getAllAvailableModels])
   
   // Use dynamic models if available, otherwise use fallback
   const allModels = dynamicModels.length > 0 ? dynamicModels : getAllAvailableModels()

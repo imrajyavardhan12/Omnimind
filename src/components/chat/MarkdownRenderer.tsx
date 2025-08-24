@@ -64,6 +64,24 @@ const CodeBlock = ({ className, children }: CodeBlockProps) => {
   )
 }
 
+// Preprocess content to remove thinking tags and other unwanted elements
+const preprocessContent = (content: string): string => {
+  // Remove all variants of thinking tags more comprehensively
+  return content
+    // Remove antml:thinking tags
+    .replace(/<thinking[^>]*>[\s\S]*?<\/antml:thinking>/gi, '')
+    // Remove thinking tags  
+    .replace(/<thinking[^>]*>[\s\S]*?<\/thinking>/gi, '')
+    // Remove think tags (both self-closing and paired)
+    .replace(/<think[^>]*\/>[\s\S]*?/gi, '')
+    .replace(/<think[^>]*>[\s\S]*?<\/think>/gi, '')
+    // Remove any standalone think tags that might remain
+    .replace(/<\/?think[^>]*>/gi, '')
+    .replace(/<\/?thinking[^>]*>/gi, '')
+    .replace(/<\/?antml:thinking[^>]*>/gi, '')
+    .trim()
+}
+
 export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererProps) => {
   useEffect(() => {
     // Dynamically import highlight.js to avoid SSR issues
@@ -76,6 +94,9 @@ export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererPr
       })
     }
   }, [content])
+
+  // Preprocess content to remove unwanted tags
+  const cleanedContent = preprocessContent(content)
 
   return (
     <div className={cn("prose prose-sm max-w-none dark:prose-invert", className)}>
@@ -206,9 +227,14 @@ export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererPr
               {children}
             </em>
           ),
+
+          // Explicitly ignore thinking-related tags
+          think: () => null,
+          thinking: () => null,
+          'antml:thinking': () => null,
         }}
       >
-        {content}
+        {cleanedContent}
       </ReactMarkdown>
     </div>
   )

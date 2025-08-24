@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Settings, X, RotateCcw } from 'lucide-react'
 import { useModelTabsStore, SelectedModel, ModelSettings } from '@/lib/stores/modelTabs'
 import { cn } from '@/lib/utils'
@@ -14,7 +14,11 @@ export function ModelSettingsModal({ selectedModel, className }: ModelSettingsMo
   const [isOpen, setIsOpen] = useState(false)
   const { updateModelSettings, defaultSettings } = useModelTabsStore()
   
-  const safeDefaultSettings = defaultSettings || { temperature: 0.7, maxTokens: 1000, systemPrompt: '' }
+  const safeDefaultSettings = useMemo(() => 
+    defaultSettings || { temperature: 0.7, maxTokens: 1000, systemPrompt: '' }, 
+    [defaultSettings]
+  )
+  
   const [localSettings, setLocalSettings] = useState<ModelSettings>(() => 
     selectedModel.settings || { ...safeDefaultSettings }
   )

@@ -81,11 +81,17 @@ export class GeminiProvider implements LLMProvider {
     const data = await response.json()
     
     if (!data.candidates || data.candidates.length === 0) {
+      console.error('No candidates in Gemini response:', data)
       throw new Error('No response from Gemini API')
     }
 
     const candidate = data.candidates[0]
-    const content = candidate.content?.parts?.[0]?.text || ''
+    const textPart = candidate.content?.parts?.find((part: any) => part.text)
+    const content = textPart?.text || ''
+    
+    if (!content) {
+      console.warn('No text content found in Gemini response')
+    }
     
     // Estimate tokens since Gemini doesn't always provide usage info
     const inputTokens = estimateTokens(request.messages.map(m => m.content).join(' '))
@@ -107,94 +113,34 @@ export class GeminiProvider implements LLMProvider {
   }
 
   async* stream(request: ChatRequest, apiKey: string, signal?: AbortSignal): AsyncGenerator<StreamChunk> {
-    // Convert messages to Gemini format
-    const contents = this.convertMessagesToGeminiFormat(request.messages)
-    
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${request.model}:streamGenerateContent?key=${apiKey}`, {
-      method: 'POST',
-      signal,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents,
-        generationConfig: {
-          temperature: request.temperature || 0.7,
-          maxOutputTokens: request.maxTokens || 1000,
-        }
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.statusText}`)
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) {
-      throw new Error('Failed to get response reader')
-    }
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-
+    // For now, use the complete endpoint and simulate streaming
+    // since Gemini's streaming endpoint returns the complete response at once
     try {
-      while (true) {
-        // Check if aborted before reading
-        if (signal?.aborted) {
-          console.log('Gemini stream aborted')
-          reader.releaseLock()
-          break
+      const response = await this.complete(request, apiKey, signal)
+      
+      // Simulate streaming by yielding the complete content
+      if (response.content) {
+        yield {
+          id: response.id,
+          content: response.content,
+          done: false,
+          tokens: response.tokens?.total
         }
-
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          // Check abort signal in the loop
-          if (signal?.aborted) {
-            console.log('Gemini stream aborted during processing')
-            reader.releaseLock()
-            return
-          }
-
-          if (line.trim() && line.startsWith('data: ')) {
-            const data = line.slice(6)
-            
-            try {
-              const parsed = JSON.parse(data)
-              
-              if (parsed.candidates && parsed.candidates[0]?.content?.parts?.[0]?.text) {
-                yield {
-                  id: crypto.randomUUID(),
-                  content: parsed.candidates[0].content.parts[0].text,
-                  done: false
-                }
-              } else if (parsed.candidates && parsed.candidates[0]?.finishReason) {
-                yield {
-                  id: crypto.randomUUID(),
-                  content: '',
-                  done: true
-                }
-                return
-              }
-            } catch (error) {
-              console.error('Failed to parse Gemini SSE data:', error)
-            }
-          }
-        }
+      }
+      
+      // Signal completion
+      yield {
+        id: response.id,
+        content: '',
+        done: true,
+        tokens: response.tokens?.total
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Gemini stream aborted with error')
+        console.log('Gemini stream aborted')
         return
       }
       throw error
-    } finally {
-      reader.releaseLock()
     }
   }
 

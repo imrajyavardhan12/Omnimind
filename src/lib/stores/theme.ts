@@ -42,7 +42,7 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: 'omnimind-theme',
-      onRehydrate: (state) => {
+      onRehydrateStorage: () => (state) => {
         // Apply theme on rehydration
         if (state && typeof window !== 'undefined') {
           const resolvedTheme = state.theme === 'system' 

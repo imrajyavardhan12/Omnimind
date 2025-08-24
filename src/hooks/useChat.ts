@@ -192,7 +192,9 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     setLoading,
     createSession,
     onMessage,
-    onError
+    onError,
+    modelIdOverride,
+    skipAddingUserMessage
   ])
 
   return {

@@ -69,6 +69,8 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
       // Track active request
       activeRequestsRef.current.add(modelKey)
       
+      let fullContent = ''
+      
       try {
         console.log(`Sending to ${selectedModel.model.name} (${selectedModel.model.id}) via ${selectedModel.provider} with key ${modelKey}`)
         
@@ -124,7 +126,6 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
           const reader = response.body.getReader()
           const decoder = new TextDecoder()
           let buffer = ''
-          let fullContent = ''
           
           try {
             while (true) {
