@@ -10,6 +10,11 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'OmniMind - Multi-LLM Comparison',
   description: 'Compare multiple LLM responses side-by-side',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/logos/icons8-mind-100.png',
+    apple: '/logos/icons8-mind-100.png',
+  },
 }
 
 export default function RootLayout({
