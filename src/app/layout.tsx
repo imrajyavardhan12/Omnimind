@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google'
 import Image from 'next/image'
 import './globals.css'
 import { ThemeProvider } from '@/components/providers/theme-provider'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -23,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="overflow-x-hidden" suppressHydrationWarning>
+    <html lang="en" className="dark overflow-x-hidden" suppressHydrationWarning>
       <body className={`${inter.className} overflow-x-hidden`}>
         <ThemeProvider>
           <div className="min-h-screen bg-background overflow-x-hidden">
@@ -45,7 +44,6 @@ export default function RootLayout({
                 </div>
               </div>
               <div className="flex items-center gap-1 sm:gap-2">
-                <ThemeToggle />
                 <a
                   href="https://github.com/imrajyavardhan12"
                   target="_blank"

@@ -8,7 +8,7 @@ import { ExportButton } from '@/components/chat/ExportButton'
 import { ConversationSidebar } from '@/components/history/ConversationSidebar'
 import { ModelTabBar } from '@/components/chat/ModelTabBar'
 import { DynamicChatPanel } from '@/components/chat/DynamicChatPanel'
-import { TabifiedUnifiedInput } from '@/components/chat/TabifiedUnifiedInput'
+import { AnimatedUnifiedInput } from '@/components/chat/AnimatedUnifiedInput'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 
 export default function Home() {
@@ -96,8 +96,8 @@ export default function Home() {
                 </div>
               )}
               
-              {/* Tabified Unified Input */}
-              <TabifiedUnifiedInput />
+              {/* Animated Unified Input */}
+              <AnimatedUnifiedInput />
             </div>
           </div>
         )}

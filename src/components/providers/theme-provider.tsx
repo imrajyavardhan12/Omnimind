@@ -7,30 +7,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useThemeStore()
 
   useEffect(() => {
-    // Initialize theme on mount
+    // Force dark mode only
     const initializeTheme = () => {
-      const stored = localStorage.getItem('omnimind-theme')
-      let storedTheme = 'system'
-      
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored)
-          storedTheme = parsed.state?.theme || 'system'
-        } catch {
-          storedTheme = 'system'
-        }
-      }
-
-      // Apply theme immediately to prevent flash
-      const resolvedTheme = storedTheme === 'system' 
-        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-        : storedTheme
-
       document.documentElement.classList.remove('light', 'dark')
-      document.documentElement.classList.add(resolvedTheme)
+      document.documentElement.classList.add('dark')
       
-      // Update store
-      setTheme(storedTheme as Theme)
+      // Update store to dark mode
+      setTheme('dark')
+      
+      // Clear any stored theme preference
+      localStorage.setItem('omnimind-theme', JSON.stringify({ state: { theme: 'dark' } }))
     }
 
     initializeTheme()

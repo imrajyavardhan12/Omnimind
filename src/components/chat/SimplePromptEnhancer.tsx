@@ -72,7 +72,7 @@ export function SimplePromptEnhancer({
       <button
         onClick={handleEnhance}
         disabled={!originalPrompt.trim() || isEnhancing || originalPrompt.length < 10}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="flex items-center gap-2 px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md font-medium"
       >
         {isEnhancing ? (
           <>
@@ -96,7 +96,7 @@ export function SimplePromptEnhancer({
       {showSuccess && (
         <button
           onClick={handleUndo}
-          className="flex items-center gap-1 px-2 py-1.5 text-xs border border-border rounded-md hover:bg-accent transition-colors"
+          className="flex items-center gap-1 px-3 py-2 text-xs bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground rounded-lg transition-all duration-200 font-medium shadow-sm hover:shadow-md"
           title="Restore original prompt"
         >
           <X className="w-3 h-3" />
@@ -106,15 +106,15 @@ export function SimplePromptEnhancer({
 
       {/* Success indicator */}
       {showSuccess && lastEnhancement && (
-        <span className="text-xs text-muted-foreground">
-          Enhanced with {lastEnhancement.provider}
+        <span className="text-xs text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
+          ✨ Enhanced with {lastEnhancement.provider}
         </span>
       )}
 
       {/* Error display */}
       {error && (
-        <span className="text-xs text-destructive">
-          {error}
+        <span className="text-xs text-destructive bg-destructive/10 px-2 py-1 rounded-md">
+          ⚠️ {error}
         </span>
       )}
     </div>
