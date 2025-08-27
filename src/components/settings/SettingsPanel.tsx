@@ -3,6 +3,7 @@
 import { Settings } from 'lucide-react'
 import { ProviderName } from '@/lib/types'
 import { ApiKeyManager } from './ApiKeyManager'
+import { EnhancementSettings } from './EnhancementSettings'
 
 interface SettingsPanelProps {
   className?: string
@@ -26,6 +27,11 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
               <ApiKeyManager key={provider} provider={provider} />
             ))}
           </div>
+        </div>
+
+        {/* Enhancement Settings */}
+        <div className="border-t pt-8">
+          <EnhancementSettings />
         </div>
         
         <div className="text-sm text-muted-foreground">

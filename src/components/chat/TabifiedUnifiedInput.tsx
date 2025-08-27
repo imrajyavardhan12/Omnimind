@@ -1,14 +1,16 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
-import { Send, Loader2, Square } from 'lucide-react'
+import { Send, Loader2, Square, Sparkles } from 'lucide-react'
 import { useSettingsStore } from '@/lib/stores/settings'
 import { useChatStore } from '@/lib/stores/chat'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
+import { useEnhancementStore } from '@/lib/stores/enhancement'
 import { useChat } from '@/hooks/useChat'
 import { ProviderName, FileAttachment } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { FileUpload } from './FileUpload'
+import { SimplePromptEnhancer } from './SimplePromptEnhancer'
 
 interface TabifiedUnifiedInputProps {
   className?: string
@@ -17,9 +19,11 @@ interface TabifiedUnifiedInputProps {
 export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<FileAttachment[]>([])
+  const [showEnhancer, setShowEnhancer] = useState(false)
   const { providers } = useSettingsStore()
   const { createSession, activeSessionId, isLoading, setAbortController, stopAllResponses } = useChatStore()
   const { selectedModels } = useModelTabsStore()
+  const { preferences, addToHistory } = useEnhancementStore()
   const activeRequestsRef = useRef<Set<string>>(new Set())
   
   // Get active models (both enabled providers AND selected in tabs)
@@ -269,9 +273,17 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
     return activeModels.length
   }
 
+  const handleEnhancedPromptSelect = (enhancedPrompt: string) => {
+    setInput(enhancedPrompt)
+    
+    // Add to enhancement history
+    addToHistory(input, null, activeSessionId || undefined)
+  }
+
   return (
     <div className={cn('border border-border rounded-lg p-4 bg-background', className)}>
       <div className="space-y-4">
+
         {/* Input Area */}
         <div className="relative">
           <textarea
@@ -289,6 +301,17 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
             {input.length} characters
           </div>
         </div>
+
+        {/* Prompt Enhancement */}
+        {input.trim().length > 10 && activeModels.length > 0 && (
+          <div className="flex justify-center">
+            <SimplePromptEnhancer
+              originalPrompt={input}
+              onEnhancedSelect={handleEnhancedPromptSelect}
+              preferredProvider={activeModels[0]?.provider}
+            />
+          </div>
+        )}
 
         {/* File Upload */}
         <FileUpload
