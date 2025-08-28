@@ -119,7 +119,7 @@ export function ChatInterface() {
             />
           </motion.div>
 
-          {/* Greeting Text */}
+          {/* Greeting Text - Fixed ESLint apostrophe */}
           <motion.p
             className="text-white/40 text-sm font-light z-10"
             animate={{
