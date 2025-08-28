@@ -134,7 +134,7 @@ export function ChatInterface() {
               damping: 20,
             }}
           >
-            Hey there! I'm here to help with anything you need
+            Hey there! I&apos;m here to help with anything you need
           </motion.p>
         </div>
 
