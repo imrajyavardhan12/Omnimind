@@ -1,15 +1,14 @@
 'use client'
 
-import { memo, useEffect } from 'react'
+import { memo, useEffect, useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import rehypeHighlight from 'rehype-highlight'
 import rehypeRaw from 'rehype-raw'
 import { cn } from '@/lib/utils'
 import { Copy, Check } from 'lucide-react'
-import { useState } from 'react'
 
-// Import Prism CSS theme
+// Import Prism for syntax highlighting - only core for now
+import Prism from 'prismjs'
 import 'prismjs/themes/prism-tomorrow.css'
 
 interface MarkdownRendererProps {
@@ -27,39 +26,169 @@ const CodeBlock = ({ className, children }: CodeBlockProps) => {
   
   // Extract language from className (e.g., "language-javascript" -> "javascript")
   const language = className?.replace('language-', '') || ''
+  const codeContent = String(children).replace(/\n$/, '')
   
   const copyToClipboard = async () => {
-    if (typeof children === 'string') {
-      await navigator.clipboard.writeText(children)
+    try {
+      await navigator.clipboard.writeText(codeContent)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
     }
   }
 
+  // Language display mapping for better UX
+  const languageDisplayMap: Record<string, string> = {
+    'javascript': 'JavaScript',
+    'typescript': 'TypeScript', 
+    'jsx': 'React JSX',
+    'tsx': 'React TSX',
+    'python': 'Python',
+    'java': 'Java',
+    'c': 'C',
+    'cpp': 'C++',
+    'csharp': 'C#',
+    'go': 'Go',
+    'rust': 'Rust',
+    'php': 'PHP',
+    'ruby': 'Ruby',
+    'swift': 'Swift',
+    'kotlin': 'Kotlin',
+    'sql': 'SQL',
+    'json': 'JSON',
+    'yaml': 'YAML',
+    'markdown': 'Markdown',
+    'bash': 'Bash',
+    'shell': 'Shell',
+    'css': 'CSS',
+    'scss': 'SCSS'
+  }
+
+  const displayLanguage = languageDisplayMap[language.toLowerCase()] || language || 'Code'
+
+  // Safe syntax highlighting function with dynamic loading
+  const getHighlightedCode = useCallback(async () => {
+    if (!language || typeof window === 'undefined') {
+      return codeContent
+    }
+
+    try {
+      const normalizedLanguage = language.toLowerCase()
+      
+      // Load the language component if it doesn't exist
+      if (!Prism.languages[normalizedLanguage] && normalizedLanguage !== 'text' && normalizedLanguage !== 'plain') {
+        try {
+          // Dynamically import common languages
+          switch (normalizedLanguage) {
+            case 'javascript':
+            case 'js':
+              await import('prismjs/components/prism-javascript' as any)
+              break
+            case 'typescript':
+            case 'ts':
+              await import('prismjs/components/prism-typescript' as any)
+              break
+            case 'python':
+            case 'py':
+              await import('prismjs/components/prism-python' as any)
+              break
+            case 'jsx':
+              await import('prismjs/components/prism-jsx' as any)
+              break
+            case 'tsx':
+              await import('prismjs/components/prism-tsx' as any)
+              break
+            case 'json':
+              await import('prismjs/components/prism-json' as any)
+              break
+            case 'css':
+              await import('prismjs/components/prism-css' as any)
+              break
+            case 'bash':
+            case 'shell':
+              await import('prismjs/components/prism-bash' as any)
+              break
+            case 'yaml':
+            case 'yml':
+              await import('prismjs/components/prism-yaml' as any)
+              break
+          }
+        } catch (importError) {
+          console.warn(`Failed to load language component for ${normalizedLanguage}:`, importError)
+        }
+      }
+
+      // Try to highlight with the loaded grammar
+      const languageGrammar = Prism.languages[normalizedLanguage] || Prism.languages.javascript
+      
+      if (languageGrammar && Prism.highlight) {
+        return Prism.highlight(codeContent, languageGrammar, normalizedLanguage)
+      }
+    } catch (error) {
+      console.warn(`Failed to highlight ${language}:`, error)
+    }
+
+    // Fallback to plain text with basic escaping
+    return codeContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  }, [language, codeContent])
+
+  // Use state to manage highlighted code
+  const [highlightedCode, setHighlightedCode] = useState(codeContent)
+
+  useEffect(() => {
+    const highlight = async () => {
+      const highlighted = await getHighlightedCode()
+      setHighlightedCode(highlighted)
+    }
+    highlight()
+  }, [language, codeContent, getHighlightedCode])
+
   return (
-    <div className="relative group">
-      <div className="flex items-center justify-between bg-muted/50 px-4 py-2 rounded-t-lg border-b">
-        <span className="text-xs text-muted-foreground font-mono">
-          {language || 'code'}
+    <div className="relative group my-4">
+      {/* Header with language and copy button */}
+      <div className="flex items-center justify-between bg-zinc-800 px-4 py-3 rounded-t-lg border border-zinc-700">
+        <span className="text-sm text-zinc-300 font-medium">
+          {displayLanguage}
         </span>
         <button
           onClick={copyToClipboard}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+          className="opacity-70 hover:opacity-100 transition-all duration-200 p-2 hover:bg-zinc-700 rounded-md text-zinc-300 hover:text-white flex items-center gap-2 text-sm"
           title="Copy code"
         >
           {copied ? (
-            <Check className="w-4 h-4 text-green-500" />
+            <>
+              <Check className="w-4 h-4 text-green-400" />
+              <span className="text-green-400">Copied!</span>
+            </>
           ) : (
-            <Copy className="w-4 h-4" />
+            <>
+              <Copy className="w-4 h-4" />
+              <span>Copy code</span>
+            </>
           )}
         </button>
       </div>
-      <pre className={cn(
-        "overflow-x-auto rounded-t-none rounded-b-lg bg-[#2d2d2d] p-4",
-        className
-      )}>
-        <code className={className}>{children}</code>
-      </pre>
+      
+      {/* Code content */}
+      <div className="relative">
+        <pre className={cn(
+          "overflow-x-auto bg-zinc-900 p-4 rounded-t-none rounded-b-lg border border-t-0 border-zinc-700",
+          "scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-zinc-800",
+          className
+        )}>
+          <code 
+            className={cn(
+              className,
+              "text-sm leading-relaxed block",
+              "text-zinc-100 font-mono"
+            )}
+            dangerouslySetInnerHTML={{
+              __html: highlightedCode
+            }}
+          />
+        </pre>
+      </div>
     </div>
   )
 }
@@ -94,14 +223,10 @@ const preprocessContent = (content: string): string => {
 
 export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererProps) => {
   useEffect(() => {
-    // Dynamically import highlight.js to avoid SSR issues
+    // Ensure Prism is ready for syntax highlighting
     if (typeof window !== 'undefined') {
-      import('highlight.js/lib/common').then((hljs) => {
-        hljs.default.highlightAll()
-      }).catch(() => {
-        // Fallback if highlight.js fails to load
-        console.warn('Failed to load highlight.js')
-      })
+      // Re-highlight any code blocks that might have been added dynamically
+      Prism.highlightAll()
     }
   }, [content])
 
@@ -112,7 +237,7 @@ export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererPr
     <div className={cn("prose prose-sm max-w-none dark:prose-invert", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight, rehypeRaw]}
+        rehypePlugins={[rehypeRaw]}
         components={{
           // Custom heading styles
           h1: ({ children }) => (
@@ -205,7 +330,7 @@ export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererPr
             if (isInline) {
               return (
                 <code
-                  className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground"
+                  className="bg-zinc-800 text-zinc-100 px-2 py-1 rounded-md text-sm font-mono border border-zinc-700"
                   {...props}
                 >
                   {children}
