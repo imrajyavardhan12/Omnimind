@@ -12,13 +12,15 @@ import { useSettingsStore } from '@/lib/stores/settings'
 interface ModelSelectionModalProps {
   isOpen: boolean
   onClose: () => void
+  onModelSelect?: (model: Model) => void
+  singleMode?: boolean
 }
 
 interface ModelsByProvider {
   [key: string]: Model[]
 }
 
-export function ModelSelectionModal({ isOpen, onClose }: ModelSelectionModalProps) {
+export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode = false }: ModelSelectionModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [dynamicModels, setDynamicModels] = useState<Model[]>([])
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
@@ -99,8 +101,14 @@ export function ModelSelectionModal({ isOpen, onClose }: ModelSelectionModalProp
   }
 
   const handleAddModel = (model: Model) => {
-    if (!canAddMore()) return
-    addModel(model)
+    if (singleMode) {
+      // For single mode, call the onModelSelect callback
+      onModelSelect?.(model)
+    } else {
+      // For compare mode, add to model tabs
+      if (!canAddMore()) return
+      addModel(model)
+    }
     onClose()
   }
 
@@ -111,7 +119,7 @@ export function ModelSelectionModal({ isOpen, onClose }: ModelSelectionModalProp
       <div className="bg-background border border-border rounded-lg shadow-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
-          <h2 className="text-xl font-semibold">Add Model</h2>
+          <h2 className="text-xl font-semibold">{singleMode ? 'Select Model' : 'Add Model'}</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-accent rounded-md transition-colors"

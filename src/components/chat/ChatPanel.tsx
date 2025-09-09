@@ -109,43 +109,29 @@ export function ChatPanel({ provider, className }: ChatPanelProps) {
             <div
               key={message.id}
               className={cn(
-                'flex gap-3',
-                message.role === 'user' ? 'justify-end' : 'justify-start'
+                'w-full',
+                message.role === 'user' ? 'flex justify-end' : 'flex justify-start'
               )}
             >
-              {message.role === 'assistant' && (
-                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-4 h-4 text-primary" />
-                </div>
-              )}
-              
               <div
                 className={cn(
-                  'max-w-[80%] rounded-lg px-3 py-2 text-sm',
+                  'max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed',
                   message.role === 'user'
-                    ? 'bg-primary text-primary-foreground ml-auto'
-                    : 'bg-muted text-muted-foreground'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted/70 text-foreground'
                 )}
               >
                 {message.content}
                 <MessageStats message={message} />
               </div>
-              
-              {message.role === 'user' && (
-                <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
-                  <User className="w-4 h-4" />
-                </div>
-              )}
             </div>
           ))
         )}
         
         {loading && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+          <div className="flex justify-start">
+            <div className="bg-muted/70 rounded-xl px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="w-4 h-4 text-primary animate-spin" />
-            </div>
-            <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground">
               Thinking...
             </div>
           </div>

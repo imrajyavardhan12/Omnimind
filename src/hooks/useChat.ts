@@ -21,7 +21,8 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     updateMessage, 
     setLoading,
     createSession,
-    activeSessionId 
+    activeSessionId,
+    setAbortController 
   } = useChatStore()
   
   const { getApiKey, selectedModels, temperature, maxTokens } = useSettingsStore()
@@ -74,8 +75,17 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     }
     addMessage(sessionId, assistantMessage)
 
-    setLoading(provider, true)
+    // Create unique key for this request
+    const requestKey = `${provider}-${modelIdOverride || selectedModels[provider]}-${Date.now()}`
+    
+    // Create abort controller for this request
+    const abortController = new AbortController()
+    setAbortController(requestKey, abortController)
+    
+    setLoading(requestKey, true)
     setIsStreaming(true)
+    
+    let fullContent = ''
 
     try {
       const chatRequest: ChatRequest = {
@@ -88,6 +98,7 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
 
       const response = await fetch('/api/chat', {
         method: 'POST',
+        signal: abortController.signal,
         headers: {
           'Content-Type': 'application/json',
           [`x-api-key-${provider}`]: apiKey
@@ -110,9 +121,15 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
-      let fullContent = ''
 
       while (true) {
+        // Check if aborted before each read
+        if (abortController.signal.aborted) {
+          console.log(`${requestKey} stream aborted`)
+          reader.cancel()
+          break
+        }
+        
         const { done, value } = await reader.read()
         if (done) break
 
@@ -121,6 +138,13 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
         buffer = lines.pop() || ''
 
         for (const line of lines) {
+          // Check if aborted during processing
+          if (abortController.signal.aborted) {
+            console.log(`${requestKey} stream aborted during processing`)
+            reader.cancel()
+            break
+          }
+          
           if (line.startsWith('data: ')) {
             const data = line.slice(6)
             if (data === '[DONE]') {
@@ -169,14 +193,23 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     } catch (error) {
       console.error(`Chat error for ${provider}:`, error)
       
-      // Update message with error
-      updateMessage(sessionId, assistantMessageId, {
-        content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      })
-      
-      onError?.(error instanceof Error ? error : new Error('Unknown error'))
+      // Check if error is due to abort
+      if (error instanceof Error && error.name === 'AbortError') {
+        updateMessage(sessionId, assistantMessageId, {
+          content: fullContent || 'Response stopped by user'
+        })
+      } else {
+        // Update message with error
+        updateMessage(sessionId, assistantMessageId, {
+          content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+        })
+        
+        onError?.(error instanceof Error ? error : new Error('Unknown error'))
+      }
     } finally {
-      setLoading(provider, false)
+      // Clean up abort controller and loading state
+      setAbortController(requestKey, null)
+      setLoading(requestKey, false)
       setIsStreaming(false)
     }
   }, [
@@ -194,7 +227,8 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     onMessage,
     onError,
     modelIdOverride,
-    skipAddingUserMessage
+    skipAddingUserMessage,
+    setAbortController
   ])
 
   return {

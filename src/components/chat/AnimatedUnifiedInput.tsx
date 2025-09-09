@@ -378,7 +378,7 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
 
         <div className="relative">
           <motion.div
-            className="absolute w-full h-full z-0 flex items-center justify-center"
+            className="absolute w-full h-full z-0 flex items-center justify-center pointer-events-none"
             initial={{ opacity: 0 }}
             animate={{ opacity: isFocused ? 1 : 0 }}
             transition={{
@@ -387,12 +387,12 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
           >
             <PulsingBorder
               style={{ height: "146.5%", minWidth: "143%" }}
-              colorBack="hsl(var(--background))"
+              colorBack="hsl(0, 0%, 0%, 0)"
               roundness={0.18}
               thickness={0}
               softness={0}
-              intensity={0.2}
-              bloom={1.8}
+              intensity={0.1}
+              bloom={1.2}
               spots={2}
               spotSize={0.25}
               pulse={0}
@@ -414,9 +414,9 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
           </motion.div>
 
           <motion.div
-            className="relative bg-background border rounded-2xl p-4 z-10"
+            className="relative bg-background border rounded-3xl p-4 shadow-lg shadow-black/10 z-20 max-w-4xl mx-auto"
             animate={{
-              borderColor: isFocused ? "hsl(29, 77%, 49%)" : "hsl(var(--border))",
+              borderColor: isFocused ? "hsl(29, 77%, 49%)" : "hsl(214, 13%, 12%)",
             }}
             transition={{
               duration: 0.6,

@@ -22,11 +22,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark overflow-x-hidden" suppressHydrationWarning>
-      <body className={`${inter.className} overflow-x-hidden`}>
+    <html lang="en" className="dark h-full overflow-x-hidden overflow-y-hidden" suppressHydrationWarning>
+      <body className={`${inter.className} h-full overflow-x-hidden overflow-y-hidden`}>
         <ThemeProvider>
-          <div className="min-h-screen bg-background overflow-x-hidden">
-          <header className="border-b border-border px-3 sm:px-6 py-3">
+          <div className="h-screen bg-background overflow-x-hidden overflow-y-hidden flex flex-col">
+          <header className="flex-shrink-0 border-b border-border px-3 sm:px-6 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 sm:gap-3">
                 <Image
@@ -69,7 +69,7 @@ export default function RootLayout({
               </div>
             </div>
           </header>
-          <main className="flex-1 overflow-x-hidden">
+          <main className="flex-1 min-h-0 overflow-x-hidden">
             {children}
           </main>
           </div>
