@@ -7,11 +7,14 @@ export type ViewMode = 'single' | 'compare'
 interface ViewModeState {
   viewMode: ViewMode
   selectedSingleModel: Model | null
+  isHeaderVisible: boolean
   
   // Actions
   setViewMode: (mode: ViewMode) => void
   setSelectedSingleModel: (model: Model) => void
   getMostUsedModel: () => Model | null
+  setIsHeaderVisible: (visible: boolean) => void
+  toggleHeaderVisibility: () => void
   
   // Usage tracking
   modelUsageCount: Record<string, number>
@@ -24,9 +27,20 @@ export const useViewModeStore = create<ViewModeState>()(
       viewMode: 'single', // Default to single mode (ChatGPT-like)
       selectedSingleModel: null,
       modelUsageCount: {},
+      isHeaderVisible: true,
 
       setViewMode: (mode: ViewMode) => {
         set({ viewMode: mode })
+        // Reset header visibility when switching modes to prevent jittering
+        set({ isHeaderVisible: true })
+      },
+
+      setIsHeaderVisible: (visible: boolean) => {
+        set({ isHeaderVisible: visible })
+      },
+
+      toggleHeaderVisibility: () => {
+        set(state => ({ isHeaderVisible: !state.isHeaderVisible }))
       },
 
       setSelectedSingleModel: (model: Model) => {
@@ -72,7 +86,8 @@ export const useViewModeStore = create<ViewModeState>()(
       partialize: (state) => ({
         viewMode: state.viewMode,
         selectedSingleModel: state.selectedSingleModel,
-        modelUsageCount: state.modelUsageCount
+        modelUsageCount: state.modelUsageCount,
+        isHeaderVisible: state.isHeaderVisible
       })
     }
   )

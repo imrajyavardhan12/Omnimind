@@ -18,9 +18,8 @@ import { useChatStore } from '@/lib/stores/chat'
 
 export default function Home() {
   const [showSettings, setShowSettings] = useState(false)
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true)
   const { selectedModels } = useModelTabsStore()
-  const { viewMode } = useViewModeStore()
+  const { viewMode, isHeaderVisible, setIsHeaderVisible, toggleHeaderVisibility } = useViewModeStore()
   const { isLoading, getActiveSession, createSession } = useChatStore()
   
   // Auto-hide header during response generation (compare mode only)
@@ -32,12 +31,10 @@ export default function Home() {
         setIsHeaderVisible(false)
       }
     }
-  }, [isLoading, viewMode, getActiveSession])
+  }, [isLoading, viewMode, getActiveSession, setIsHeaderVisible])
 
-  // Toggle header visibility manually
-  const toggleHeader = () => {
-    setIsHeaderVisible(!isHeaderVisible)
-  }
+  // Use the shared toggle function from the store
+  const toggleHeader = toggleHeaderVisibility
 
   // Clear conversation function
   const clearConversation = () => {
@@ -111,20 +108,20 @@ export default function Home() {
             <div className="flex-1 min-h-0 overflow-hidden">
               {viewMode === 'single' ? (
                 /* Single Chat Interface - ChatGPT Style */
-                <SingleChatInterface className="h-full" />
+                <SingleChatInterface key="single-mode" className="h-full" />
               ) : (
                 /* Compare Mode - Multi-Model Grid */
-                <div className="relative h-full">
+                <div key="compare-mode" className="relative h-full">
                   {/* Collapsible Header */}
                   <motion.div
                     initial={false}
                     animate={{
-                      height: isHeaderVisible ? "auto" : "0px",
-                      opacity: isHeaderVisible ? 1 : 0
+                      maxHeight: (viewMode === 'compare' && isHeaderVisible) ? "300px" : "0px",
+                      opacity: (viewMode === 'compare' && isHeaderVisible) ? 1 : 0
                     }}
                     transition={{
-                      duration: 0.3,
-                      ease: "easeInOut"
+                      duration: 0.2,
+                      ease: [0.4, 0, 0.2, 1]
                     }}
                     className="relative z-10 overflow-hidden bg-background"
                   >

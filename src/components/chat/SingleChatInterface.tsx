@@ -28,12 +28,11 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isClient = useIsClient()
 
-  const { selectedSingleModel, setSelectedSingleModel, incrementModelUsage } = useViewModeStore()
+  const { selectedSingleModel, setSelectedSingleModel, incrementModelUsage, viewMode, isHeaderVisible, setIsHeaderVisible, toggleHeaderVisibility } = useViewModeStore()
   const { getAllAvailableModels } = useModelTabsStore()
   const { providers, getApiKey } = useSettingsStore()
   const { getActiveSession, createSession, activeSessionId, stopAllResponses } = useChatStore()
@@ -94,12 +93,10 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
     if (isStreaming && messages.length > 0) {
       setIsHeaderVisible(false)
     }
-  }, [isStreaming, messages.length])
+  }, [isStreaming, messages.length, setIsHeaderVisible])
 
-  // Toggle header visibility manually
-  const toggleHeader = () => {
-    setIsHeaderVisible(!isHeaderVisible)
-  }
+  // Use the shared toggle function from the store
+  const toggleHeader = toggleHeaderVisibility
 
   // Handle send message
   const handleSend = async () => {
@@ -189,12 +186,12 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
       <motion.div
         initial={false}
         animate={{
-          height: isHeaderVisible ? "auto" : "0px",
-          opacity: isHeaderVisible ? 1 : 0
+          maxHeight: (viewMode === 'single' && isHeaderVisible) ? "300px" : "0px",
+          opacity: (viewMode === 'single' && isHeaderVisible) ? 1 : 0
         }}
         transition={{
-          duration: 0.3,
-          ease: "easeInOut"
+          duration: 0.2,
+          ease: [0.4, 0, 0.2, 1]
         }}
         className="relative z-10 overflow-hidden bg-background"
       >
