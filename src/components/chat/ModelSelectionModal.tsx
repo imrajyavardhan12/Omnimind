@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { getProviderIcon } from '@/components/ui/provider-icons'
 import { useDynamicModels } from '@/hooks/useDynamicModels'
 import { useSettingsStore } from '@/lib/stores/settings'
+import { Portal } from '@/components/ui/portal'
 
 interface ModelSelectionModalProps {
   isOpen: boolean
@@ -115,7 +116,8 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <Portal>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
       <div className="bg-background border border-border rounded-lg shadow-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
@@ -248,6 +250,7 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </Portal>
   )
 }

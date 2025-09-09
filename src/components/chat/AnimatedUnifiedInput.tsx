@@ -24,10 +24,14 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
   const [isFocused, setIsFocused] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<FileAttachment[]>([])
   const { providers } = useSettingsStore()
-  const { createSession, activeSessionId, isLoading, setAbortController, stopAllResponses } = useChatStore()
+  const { createSession, activeSessionId, isLoading, setAbortController, stopAllResponses, getActiveSession } = useChatStore()
   const { selectedModels } = useModelTabsStore()
   const { preferences, addToHistory } = useEnhancementStore()
   const activeRequestsRef = useRef<Set<string>>(new Set())
+  
+  // Get current session for checking message count
+  const currentSession = getActiveSession()
+  const hasMessages = currentSession?.messages && currentSession.messages.length > 0
   
   // Get active models (both enabled providers AND selected in tabs)
   const activeModels = selectedModels.filter(sm => 
@@ -81,7 +85,9 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
       let fullContent = ''
       
       try {
-        console.log(`Sending to ${selectedModel.model.name} (${selectedModel.model.id}) via ${selectedModel.provider} with key ${modelKey}`)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Sending to ${selectedModel.model.name} (${selectedModel.model.id}) via ${selectedModel.provider}`)
+        }
         
         // Add system prompt to message if it exists
         let messageToSend = message
@@ -106,7 +112,9 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
         const abortController = new AbortController()
         useChatStore.getState().setAbortController(modelKey, abortController)
         
-        console.log(`Set abort controller for ${modelKey}`)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Set abort controller for ${modelKey}`)
+        }
         
         // Make direct API call with specific model
         const response = await fetch('/api/chat', {
@@ -178,7 +186,9 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
                     
                     // Handle final message with complete stats
                     if (parsed.done || parsed.finish_reason) {
-                      console.log('Final message stats:', { tokens: parsed.tokens, cost: parsed.cost })
+                      if (process.env.NODE_ENV === 'development') {
+                        console.log('Final message stats:', { tokens: parsed.tokens, cost: parsed.cost })
+                      }
                       const updateData: any = { content: fullContent }
                       if (parsed.tokens) updateData.tokens = parsed.tokens
                       if (parsed.cost) updateData.cost = parsed.cost
@@ -202,7 +212,9 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
         setTimeout(() => {
           const finalMessage = useChatStore.getState().getActiveSession()?.messages.find(m => m.id === assistantMessageId)
           if (finalMessage && (!finalMessage.tokens || !finalMessage.cost)) {
-            console.log('Calculating missing stats for:', selectedModel.model.name)
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Calculating missing stats for:', selectedModel.model.name)
+            }
             
             // Import tokenizer functions dynamically
             import('@/lib/utils/tokenizer').then(({ estimateTokens, calculateCost }) => {
@@ -291,91 +303,90 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
   }
 
   return (
-    <div className={cn('flex flex-col items-center justify-center p-4', className)}>
+    <div className={cn('flex flex-col items-center justify-center p-6', className)}>
       <div className="w-full max-w-4xl relative">
-        <div className="flex flex-row items-center mb-2">
-          {/* Shader Circle */}
-          <motion.div
-            id="circle-ball"
-            className="relative flex items-center justify-center z-10"
-            animate={{
-              y: isFocused ? 50 : 0,
-              opacity: isFocused ? 0 : 100,
-              filter: isFocused ? "blur(4px)" : "blur(0px)",
-              rotate: isFocused ? 180 : 0,
-            }}
-            transition={{
-              duration: 0.5,
-              type: "spring",
-              stiffness: 200,
-              damping: 20,
-            }}
-          >
-            <div className="z-10 absolute bg-foreground/5 h-11 w-11 rounded-full backdrop-blur-[3px]">
-              <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-4 left-4  blur-[1px] opacity-70" />
-              <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-3 left-7  blur-[0.8px] opacity-80" />
-              <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-8 left-2  blur-[1px] opacity-70" />
-              <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-5 left-9 blur-[0.8px] opacity-80" />
-              <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-7 left-7  blur-[1px] opacity-70" />
-            </div>
-            <LiquidMetal
-              style={{ height: 80, width: 80, filter: "blur(14px)", position: "absolute" }}
-              colorBack="hsl(0, 0%, 0%, 0)"
-              colorTint="hsl(29, 77%, 49%)"
-              repetition={4}
-              softness={0.5}
-              shiftRed={0.3}
-              shiftBlue={0.3}
-              distortion={0.1}
-              contour={1}
-              shape="circle"
-              offsetX={0}
-              offsetY={0}
-              scale={0.58}
-              rotation={50}
-              speed={5}
-            />
-            <LiquidMetal
-              style={{ height: 80, width: 80 }}
-              colorBack="hsl(0, 0%, 0%, 0)"
-              colorTint="hsl(29, 77%, 49%)"
-              repetition={4}
-              softness={0.5}
-              shiftRed={0.3}
-              shiftBlue={0.3}
-              distortion={0.1}
-              contour={1}
-              shape="circle"
-              offsetX={0}
-              offsetY={0}
-              scale={0.58}
-              rotation={50}
-              speed={5}
-            />
-          </motion.div>
+        {/* Ready to chat animation - only show when no messages and active models available */}
+        {!hasMessages && activeModels.length > 0 && (
+          <div className="flex flex-row items-center mb-4">
+            {/* Shader Circle */}
+            <motion.div
+              id="circle-ball"
+              className="relative flex items-center justify-center z-10"
+              animate={{
+                y: isFocused ? 50 : 0,
+                opacity: isFocused ? 0 : 100,
+                filter: isFocused ? "blur(4px)" : "blur(0px)",
+                rotate: isFocused ? 180 : 0,
+              }}
+              transition={{
+                duration: 0.5,
+                type: "spring",
+                stiffness: 200,
+                damping: 20,
+              }}
+            >
+              <div className="z-10 absolute bg-foreground/5 h-11 w-11 rounded-full backdrop-blur-[3px]">
+                <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-4 left-4  blur-[1px] opacity-70" />
+                <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-3 left-7  blur-[0.8px] opacity-80" />
+                <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-8 left-2  blur-[1px] opacity-70" />
+                <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-5 left-9 blur-[0.8px] opacity-80" />
+                <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-7 left-7  blur-[1px] opacity-70" />
+              </div>
+              <LiquidMetal
+                style={{ height: 80, width: 80, filter: "blur(14px)", position: "absolute" }}
+                colorBack="hsl(0, 0%, 0%, 0)"
+                colorTint="hsl(29, 77%, 49%)"
+                repetition={4}
+                softness={0.5}
+                shiftRed={0.3}
+                shiftBlue={0.3}
+                distortion={0.1}
+                contour={1}
+                shape="circle"
+                offsetX={0}
+                offsetY={0}
+                scale={0.58}
+                rotation={50}
+                speed={5}
+              />
+              <LiquidMetal
+                style={{ height: 80, width: 80 }}
+                colorBack="hsl(0, 0%, 0%, 0)"
+                colorTint="hsl(29, 77%, 49%)"
+                repetition={4}
+                softness={0.5}
+                shiftRed={0.3}
+                shiftBlue={0.3}
+                distortion={0.1}
+                contour={1}
+                shape="circle"
+                offsetX={0}
+                offsetY={0}
+                scale={0.58}
+                rotation={50}
+                speed={5}
+              />
+            </motion.div>
 
-          {/* Greeting Text */}
-          <motion.p
-            className="text-muted-foreground text-sm font-light z-10 ml-4"
-            animate={{
-              y: isFocused ? 50 : 0,
-              opacity: isFocused ? 0 : 100,
-              filter: isFocused ? "blur(4px)" : "blur(0px)",
-            }}
-            transition={{
-              duration: 0.5,
-              type: "spring",
-              stiffness: 200,
-              damping: 20,
-            }}
-          >
-            {activeModels.length > 0 
-              ? `Ready to compare ${activeModels.length} model${activeModels.length !== 1 ? 's' : ''}...`
-              : 'Add models above to start comparing AI responses'
-            }
-          </motion.p>
-        </div>
-
+            {/* Greeting Text */}
+            <motion.p
+              className="text-muted-foreground text-sm font-light z-10 ml-4"
+              animate={{
+                y: isFocused ? 50 : 0,
+                opacity: isFocused ? 0 : 100,
+                filter: isFocused ? "blur(4px)" : "blur(0px)",
+              }}
+              transition={{
+                duration: 0.5,
+                type: "spring",
+                stiffness: 200,
+                damping: 20,
+              }}
+            >
+              Ready to chat...
+            </motion.p>
+          </div>
+        )}
         <div className="relative">
           <motion.div
             className="absolute w-full h-full z-0 flex items-center justify-center pointer-events-none"

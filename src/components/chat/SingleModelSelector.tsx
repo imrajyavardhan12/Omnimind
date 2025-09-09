@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Settings, Check, RotateCcw, X } from 'lucide-react'
+import { Plus, Settings, Check, X } from 'lucide-react'
 import { useViewModeStore } from '@/lib/stores/viewMode'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useSettingsStore } from '@/lib/stores/settings'
@@ -11,7 +11,7 @@ import { getProviderIcon } from '@/components/ui/provider-icons'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { useChatStore } from '@/lib/stores/chat'
+import { Portal } from '@/components/ui/portal'
 
 interface SingleModelSelectorProps {
   className?: string
@@ -29,7 +29,6 @@ export function SingleModelSelector({ className }: SingleModelSelectorProps) {
   const { selectedSingleModel, setSelectedSingleModel } = useViewModeStore()
   const { getAllAvailableModels } = useModelTabsStore()
   const { providers, getApiKey } = useSettingsStore()
-  const { createSession, getActiveSession } = useChatStore()
 
   // Get available models from enabled providers
   const availableModels = getAllAvailableModels().filter(model => {
@@ -56,10 +55,6 @@ export function SingleModelSelector({ className }: SingleModelSelectorProps) {
     // Here you would save the settings to a store or context
     // For now, we'll just close the popover
     setShowSettings(false)
-  }
-
-  const clearConversation = () => {
-    createSession() // Creates a new session, effectively clearing the current one
   }
 
   return (
@@ -95,17 +90,6 @@ export function SingleModelSelector({ className }: SingleModelSelectorProps) {
 
         <div className="flex-1" />
 
-        {/* Clear Conversation Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={clearConversation}
-          className="text-muted-foreground hover:text-foreground"
-          title="Clear conversation"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </Button>
-
         {/* Add/Change Model Button */}
         <button
           onClick={() => setShowModelModal(true)}
@@ -131,7 +115,8 @@ export function SingleModelSelector({ className }: SingleModelSelectorProps) {
 
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
           <div className="bg-background border border-border rounded-lg shadow-lg w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold">Model Settings</h3>
@@ -227,7 +212,8 @@ export function SingleModelSelector({ className }: SingleModelSelectorProps) {
               </div>
             )}
           </div>
-        </div>
+          </div>
+        </Portal>
       )}
     </>
   )

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { Settings, X, RotateCcw } from 'lucide-react'
 import { useModelTabsStore, SelectedModel, ModelSettings } from '@/lib/stores/modelTabs'
 import { cn } from '@/lib/utils'
+import { Portal } from '@/components/ui/portal'
 
 interface ModelSettingsModalProps {
   selectedModel: SelectedModel
@@ -83,7 +84,8 @@ export function ModelSettingsModal({ selectedModel, className }: ModelSettingsMo
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <Portal>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <div ref={modalRef} className="bg-background border border-border rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-x-hidden overflow-y-auto flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
               <div>
@@ -187,7 +189,8 @@ export function ModelSettingsModal({ selectedModel, className }: ModelSettingsMo
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        </Portal>
       )}
     </>
   )

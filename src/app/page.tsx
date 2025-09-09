@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { Settings } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Settings, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import { SessionStats } from '@/components/chat/SessionStats'
 import { ExportButton } from '@/components/chat/ExportButton'
@@ -13,11 +14,35 @@ import { SingleChatInterface } from '@/components/chat/SingleChatInterface'
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useViewModeStore } from '@/lib/stores/viewMode'
+import { useChatStore } from '@/lib/stores/chat'
 
 export default function Home() {
   const [showSettings, setShowSettings] = useState(false)
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true)
   const { selectedModels } = useModelTabsStore()
   const { viewMode } = useViewModeStore()
+  const { isLoading, getActiveSession, createSession } = useChatStore()
+  
+  // Auto-hide header during response generation (compare mode only)
+  useEffect(() => {
+    if (viewMode === 'compare') {
+      const isAnyLoading = Object.values(isLoading).some(loading => loading)
+      const session = getActiveSession()
+      if (isAnyLoading && session?.messages && session.messages.length > 0) {
+        setIsHeaderVisible(false)
+      }
+    }
+  }, [isLoading, viewMode, getActiveSession])
+
+  // Toggle header visibility manually
+  const toggleHeader = () => {
+    setIsHeaderVisible(!isHeaderVisible)
+  }
+
+  // Clear conversation function
+  const clearConversation = () => {
+    createSession() // Creates a new session, effectively clearing the current one
+  }
   
   // Dynamic grid class - responsive for mobile
   const getGridClass = (count: number) => {
@@ -65,6 +90,14 @@ export default function Home() {
               <div className="flex gap-2">
                 <ExportButton />
                 <button
+                  onClick={clearConversation}
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
+                  title="Clear conversation"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span className="hidden sm:inline">Clear</span>
+                </button>
+                <button
                   onClick={() => setShowSettings(true)}
                   className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent"
                 >
@@ -81,37 +114,86 @@ export default function Home() {
                 <SingleChatInterface className="h-full" />
               ) : (
                 /* Compare Mode - Multi-Model Grid */
-                <div className="p-3 sm:p-6 pt-0 space-y-4 sm:space-y-6 h-full overflow-y-auto">
-                  <div className="space-y-6">
-                    <SessionStats />
-                    
+                <div className="relative h-full">
+                  {/* Collapsible Header */}
+                  <motion.div
+                    initial={false}
+                    animate={{
+                      height: isHeaderVisible ? "auto" : "0px",
+                      opacity: isHeaderVisible ? 1 : 0
+                    }}
+                    transition={{
+                      duration: 0.3,
+                      ease: "easeInOut"
+                    }}
+                    className="relative z-10 overflow-hidden bg-background"
+                  >
+                    {/* Session Stats */}
+                    <div className="px-6 py-4">
+                      <SessionStats />
+                    </div>
+
                     {/* Model Tab Bar */}
                     <ModelTabBar />
-                    
-                    {/* Dynamic Grid for Selected Models */}
-                    <div className={`grid ${getGridClass(selectedModels.length)} gap-2 sm:gap-4 w-full overflow-hidden`}>
-                      {selectedModels.map((selectedModel) => (
-                        <DynamicChatPanel 
-                          key={selectedModel.id} 
-                          selectedModel={selectedModel}
-                          className="h-[400px] sm:h-[500px] lg:h-[600px] min-w-0" 
-                        />
-                      ))}
-                    </div>
-                    
-                    {/* Show message if no models selected */}
-                    {selectedModels.length === 0 && (
-                      <div className="text-center py-8 sm:py-12 border border-dashed border-border rounded-lg mx-2 sm:mx-0">
-                        <div className="text-muted-foreground px-4">
-                          <p className="text-base sm:text-lg mb-2">No models selected</p>
-                          <p className="text-xs sm:text-sm">
-                            Click &quot;Add Model&quot; in the tab bar above to start comparing AI responses
-                          </p>
+                  </motion.div>
+
+                  {/* Header Toggle Button - Always visible */}
+                  <div className="relative z-10 flex justify-center py-2 border-b border-border/20 bg-background">
+                    <button
+                      onClick={toggleHeader}
+                      className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50"
+                    >
+                      {isHeaderVisible ? (
+                        <>
+                          <ChevronUp className="w-3 h-3" />
+                          Hide Controls
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-3 h-3" />
+                          Show Controls
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Scrollable content area with bottom padding for input */}
+                  <div 
+                    className="overflow-y-auto pb-40"
+                    style={{
+                      height: `calc(100% - ${isHeaderVisible ? '160px' : '48px'})`
+                    }}
+                  >
+                    <div className="p-3 sm:p-6 pt-0 space-y-4 sm:space-y-6">
+                      <div className="space-y-6">
+                        {/* Dynamic Grid for Selected Models */}
+                        <div className={`grid ${getGridClass(selectedModels.length)} gap-2 sm:gap-4 w-full overflow-hidden`}>
+                          {selectedModels.map((selectedModel) => (
+                            <DynamicChatPanel 
+                              key={selectedModel.id} 
+                              selectedModel={selectedModel}
+                              className="h-[400px] sm:h-[500px] lg:h-[600px] min-w-0" 
+                            />
+                          ))}
                         </div>
+                        
+                        {/* Show message if no models selected */}
+                        {selectedModels.length === 0 && (
+                          <div className="text-center py-8 sm:py-12 border border-dashed border-border rounded-lg mx-2 sm:mx-0">
+                            <div className="text-muted-foreground px-4">
+                              <p className="text-base sm:text-lg mb-2">No models selected</p>
+                              <p className="text-xs sm:text-sm">
+                                Click &quot;Add Model&quot; in the tab bar above to start comparing AI responses
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    
-                    {/* Animated Unified Input */}
+                    </div>
+                  </div>
+                  
+                  {/* Fixed Animated Unified Input */}
+                  <div className="absolute bottom-0 left-0 right-0 z-20">
                     <AnimatedUnifiedInput />
                   </div>
                 </div>
