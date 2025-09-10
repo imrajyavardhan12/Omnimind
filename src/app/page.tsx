@@ -129,34 +129,50 @@ export default function Home() {
                     transition={{ duration: 0.15 }}
                     className="relative h-full"
                   >
-                    {/* Collapsible Header */}
-                    <motion.div
-                      initial={false}
-                      animate={{
-                        height: isHeaderVisible ? "auto" : 0,
-                        opacity: isHeaderVisible ? 1 : 0
-                      }}
-                      transition={{
-                        height: {
-                          duration: 0.3,
-                          ease: [0.4, 0, 0.2, 1]
-                        },
-                        opacity: {
-                          duration: 0.2,
-                          ease: "easeInOut"
-                        }
-                      }}
-                      className="relative z-10 overflow-hidden bg-background"
-                      style={{ willChange: 'height, opacity' }}
-                    >
-                      {/* Session Stats */}
-                      <div className="px-6 py-4">
-                        <SessionStats />
-                      </div>
+                    {/* Collapsible Header with smoother animation */}
+                    <AnimatePresence initial={false}>
+                      {isHeaderVisible && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ 
+                            height: "auto", 
+                            opacity: 1,
+                            transition: {
+                              height: {
+                                duration: 0.3,
+                                ease: [0.4, 0, 0.2, 1]
+                              },
+                              opacity: {
+                                duration: 0.2,
+                                delay: 0.1
+                              }
+                            }
+                          }}
+                          exit={{ 
+                            height: 0, 
+                            opacity: 0,
+                            transition: {
+                              height: {
+                                duration: 0.25,
+                                ease: [0.4, 0, 0.2, 1]
+                              },
+                              opacity: {
+                                duration: 0.15
+                              }
+                            }
+                          }}
+                          className="relative z-10 overflow-hidden bg-background"
+                        >
+                          {/* Session Stats */}
+                          <div className="px-6 py-4">
+                            <SessionStats />
+                          </div>
 
-                      {/* Model Tab Bar */}
-                      <ModelTabBar />
-                    </motion.div>
+                          {/* Model Tab Bar */}
+                          <ModelTabBar />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     {/* Header Toggle Button - Always visible */}
                     <div className="relative z-10 flex justify-center py-2 border-b border-border/20 bg-background">
