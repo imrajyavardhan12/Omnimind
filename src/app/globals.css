@@ -71,26 +71,34 @@
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   }
 
-  /* Smooth sidebar transitions */
+  /* Smooth sidebar transitions - improved */
   .sidebar-transition {
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: width;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    overflow: hidden !important;
+    position: relative;
   }
 
-  /* Prevent content flash during sidebar transition */
-  .sidebar-transition * {
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-    transform: translateZ(0);
+  /* Prevent any overflow during transitions */
+  .sidebar-transition::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sidebar-transition {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
   /* Ensure smooth content rendering with no flash */
   .sidebar-content {
     transition: opacity 0.2s ease-out;
     will-change: opacity;
+    overflow: hidden;
+    position: relative;
   }
 
   /* Optimize for hardware acceleration */
@@ -98,6 +106,8 @@
   .sidebar-content {
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
   }
 
   /* Markdown content styling */
