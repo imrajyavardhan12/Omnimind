@@ -30,9 +30,17 @@ export const useViewModeStore = create<ViewModeState>()(
       isHeaderVisible: true,
 
       setViewMode: (mode: ViewMode) => {
+        // Don't reset header visibility immediately - let animations handle it
+        // This prevents the jitter when switching modes
         set({ viewMode: mode })
-        // Reset header visibility when switching modes to prevent jittering
-        set({ isHeaderVisible: true })
+        
+        // Only reset header visibility for compare mode after a small delay
+        // This allows exit animations to complete smoothly
+        if (mode === 'compare') {
+          setTimeout(() => {
+            set({ isHeaderVisible: true })
+          }, 200)
+        }
       },
 
       setIsHeaderVisible: (visible: boolean) => {
