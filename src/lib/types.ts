@@ -18,6 +18,17 @@ export interface Message {
   cost?: number
   activeModels?: string[] // Track which models were active when user message was sent
   attachments?: FileAttachment[] // File attachments for multimodal support
+  branchFromId?: string // ID of the message this branches from
+  branchId?: string // Unique branch identifier
+}
+
+export interface ConversationBranch {
+  id: string
+  name: string
+  parentMessageId: string // Message ID where branch starts
+  messages: Message[] // Messages in this branch
+  createdAt: number
+  isActive: boolean
 }
 
 export interface Model {
@@ -82,6 +93,8 @@ export interface ChatSession {
   id: string
   title: string
   messages: Message[]
+  branches?: ConversationBranch[]
+  activeBranchId?: string
   activeProviders: ProviderName[]
   createdAt: number
   updatedAt: number
