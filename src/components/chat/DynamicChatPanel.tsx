@@ -9,6 +9,7 @@ import { useChat } from '@/hooks/useChat'
 import { useIsClient } from '@/hooks/useIsClient'
 import { MessageStats } from './MessageStats'
 import { MessageAttachments } from './MessageAttachments'
+import { MessageBranchButton } from './MessageBranchButton'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { SelectedModel } from '@/lib/stores/modelTabs'
 import { cn } from '@/lib/utils'
@@ -27,7 +28,8 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
   const { 
     getActiveSession, 
     isLoading,
-    activeSessionId
+    activeSessionId,
+    getBranchMessages
   } = useChatStore()
   
   const { sendMessage } = useChat({ 
@@ -38,13 +40,16 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
   const providerConfig = providers[selectedModel.provider]
   const session = getActiveSession()
   
-  // Filter messages for this specific model
+  // Filter messages for this specific model (including branch messages)
   const messages = useMemo(() => {
-    if (!session?.messages) return []
+    if (!session || !activeSessionId) return []
+    
+    // Get messages from the current branch
+    const branchMessages = getBranchMessages(activeSessionId, session.activeBranchId)
     
     const modelKey = `${selectedModel.provider}:${selectedModel.model.id}`
     
-    const filtered = session.messages.filter(msg => {
+    const filtered = branchMessages.filter(msg => {
       // Include assistant messages from this specific model
       if (msg.role === 'assistant') {
         return msg.provider === selectedModel.provider && msg.model === selectedModel.model.id
@@ -64,7 +69,7 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
     })
     
     return filtered
-  }, [session?.messages, selectedModel.provider, selectedModel.model.id])
+  }, [session, activeSessionId, selectedModel.provider, selectedModel.model.id, getBranchMessages, session?.activeBranchId])
   
   const loading = isLoading[selectedModel.provider]
 
@@ -145,7 +150,7 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
             <div
               key={message.id}
               className={cn(
-                'flex gap-3',
+                'flex gap-3 group',
                 message.role === 'user' ? 'justify-end' : 'justify-start'
               )}
             >
@@ -157,12 +162,23 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
               
               <div
                 className={cn(
-                  'max-w-[80%] rounded-lg px-3 py-2 text-sm space-y-2',
+                  'max-w-[80%] rounded-lg px-3 py-2 text-sm space-y-2 relative',
                   message.role === 'user'
                     ? 'bg-primary text-primary-foreground ml-auto'
                     : 'bg-muted text-muted-foreground'
                 )}
               >
+                {/* Branch button */}
+                {activeSessionId && (
+                  <div className="absolute -left-10 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <MessageBranchButton 
+                      message={message} 
+                      sessionId={activeSessionId}
+                      className="scale-75"
+                    />
+                  </div>
+                )}
+                
                 {message.attachments && (
                   <MessageAttachments 
                     attachments={message.attachments}
