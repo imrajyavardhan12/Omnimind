@@ -9,6 +9,7 @@ import { useChat } from '@/hooks/useChat'
 import { useIsClient } from '@/hooks/useIsClient'
 import { MessageStats } from './MessageStats'
 import { MessageAttachments } from './MessageAttachments'
+import { MessageBranchButton } from './MessageBranchButton'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { SelectedModel } from '@/lib/stores/modelTabs'
 import { cn } from '@/lib/utils'
@@ -145,7 +146,7 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
             <div
               key={message.id}
               className={cn(
-                'flex gap-3',
+                'flex gap-3 group',
                 message.role === 'user' ? 'justify-end' : 'justify-start'
               )}
             >
@@ -157,7 +158,7 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
               
               <div
                 className={cn(
-                  'max-w-[80%] rounded-lg px-3 py-2 text-sm space-y-2',
+                  'max-w-[80%] rounded-lg px-3 py-2 text-sm space-y-2 relative',
                   message.role === 'user'
                     ? 'bg-primary text-primary-foreground ml-auto'
                     : 'bg-muted text-muted-foreground'
@@ -182,6 +183,16 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
                   </>
                 )}
                 <MessageStats message={message} />
+                
+                {/* Add branch button for user messages */}
+                {message.role === 'user' && activeSessionId && (
+                  <div className="absolute -left-10 top-2">
+                    <MessageBranchButton 
+                      message={message} 
+                      sessionId={activeSessionId}
+                    />
+                  </div>
+                )}
               </div>
               
               {message.role === 'user' && (
