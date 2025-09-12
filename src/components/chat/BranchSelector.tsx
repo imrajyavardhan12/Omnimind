@@ -25,12 +25,14 @@ export function BranchSelector({ sessionId, className }: BranchSelectorProps) {
   
   const session = sessions.find(s => s.id === sessionId)
   
-  if (!session || !session.branches || session.branches.length === 0) {
+  // Show the selector even if there are no branches yet
+  if (!session) {
     return null
   }
   
+  const branches = session.branches || []
   const currentBranch = session.activeBranchId 
-    ? session.branches.find(b => b.id === session.activeBranchId)
+    ? branches.find(b => b.id === session.activeBranchId)
     : null
   
   const handleRename = (branchId: string, newName: string) => {
@@ -44,7 +46,7 @@ export function BranchSelector({ sessionId, className }: BranchSelectorProps) {
   const handleDelete = (branchId: string) => {
     if (confirm('Delete this branch? This cannot be undone.')) {
       deleteBranch(sessionId, branchId)
-      if (session.branches?.length === 1) {
+      if (branches.length === 1) {
         setIsOpen(false)
       }
     }
@@ -59,7 +61,7 @@ export function BranchSelector({ sessionId, className }: BranchSelectorProps) {
         <GitBranch className="w-4 h-4" />
         <span>{currentBranch ? currentBranch.name : 'Main'}</span>
         <span className="text-muted-foreground">
-          ({session.branches.length + 1} branches)
+          ({branches.length + 1} {branches.length === 0 ? 'branch' : 'branches'})
         </span>
       </button>
       
@@ -97,7 +99,7 @@ export function BranchSelector({ sessionId, className }: BranchSelectorProps) {
               </button>
               
               {/* Branch list */}
-              {session.branches.map(branch => (
+              {branches.map(branch => (
                 <div key={branch.id} className="group">
                   {editingBranchId === branch.id ? (
                     <div className="flex items-center gap-1 px-2 py-1.5">
@@ -165,9 +167,12 @@ export function BranchSelector({ sessionId, className }: BranchSelectorProps) {
                 </div>
               ))}
               
+              {/* Help text */}
               <div className="border-t border-border mt-2 pt-2">
                 <div className="text-xs text-muted-foreground px-2 py-1">
-                  Branches allow you to explore different conversation paths
+                  {branches.length === 0 
+                    ? 'Hover over a message to create branches'
+                    : 'Branches allow you to explore different conversation paths'}
                 </div>
               </div>
             </div>
