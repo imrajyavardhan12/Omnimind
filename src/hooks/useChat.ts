@@ -22,8 +22,7 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     setLoading,
     createSession,
     activeSessionId,
-    setAbortController,
-    getBranchMessages 
+    setAbortController 
   } = useChatStore()
   
   const { getApiKey, selectedModels, temperature, maxTokens } = useSettingsStore()
@@ -89,11 +88,8 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     let fullContent = ''
 
     try {
-      // Get the correct messages based on whether we're in a branch or main
-      const contextMessages = getBranchMessages(sessionId, session.activeBranchId)
-      
       const chatRequest: ChatRequest = {
-        messages: [...contextMessages, userMessage],
+        messages: [...session.messages, userMessage],
         model: modelIdOverride || selectedModels[provider],
         temperature,
         maxTokens,
@@ -174,7 +170,7 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
 
       // Calculate token estimates for streaming (actual counts come from API response)
       const estimatedInputTokens = estimateTokens(
-        contextMessages.map(m => m.content).join(' ')
+        session.messages.map(m => m.content).join(' ')
       )
       const estimatedOutputTokens = estimateTokens(fullContent)
       const estimatedCost = calculateCost(
@@ -232,8 +228,7 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     onError,
     modelIdOverride,
     skipAddingUserMessage,
-    setAbortController,
-    getBranchMessages
+    setAbortController
   ])
 
   return {

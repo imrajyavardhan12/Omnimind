@@ -9,7 +9,6 @@ import { useChat } from '@/hooks/useChat'
 import { useIsClient } from '@/hooks/useIsClient'
 import { MessageStats } from './MessageStats'
 import { MessageAttachments } from './MessageAttachments'
-import { MessageBranchButton } from './MessageBranchButton'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { SelectedModel } from '@/lib/stores/modelTabs'
 import { cn } from '@/lib/utils'
@@ -184,15 +183,6 @@ export function DynamicChatPanel({ selectedModel, className }: DynamicChatPanelP
                 )}
                 <MessageStats message={message} />
                 
-                {/* Add branch button for user messages */}
-                {message.role === 'user' && activeSessionId && (
-                  <div className="absolute -left-10 top-2">
-                    <MessageBranchButton 
-                      message={message} 
-                      sessionId={activeSessionId}
-                    />
-                  </div>
-                )}
               </div>
               
               {message.role === 'user' && (

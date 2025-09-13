@@ -12,7 +12,6 @@ import { DynamicChatPanel } from '@/components/chat/DynamicChatPanel'
 import { AnimatedUnifiedInput } from '@/components/chat/AnimatedUnifiedInput'
 import { SingleChatInterface } from '@/components/chat/SingleChatInterface'
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle'
-import { BranchSelector } from '@/components/chat/BranchSelector'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useViewModeStore } from '@/lib/stores/viewMode'
 import { useChatStore } from '@/lib/stores/chat'
@@ -21,7 +20,7 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false)
   const { selectedModels } = useModelTabsStore()
   const { viewMode, isHeaderVisible, setIsHeaderVisible, toggleHeaderVisibility } = useViewModeStore()
-  const { isLoading, getActiveSession, createSession, activeSessionId } = useChatStore()
+  const { isLoading, getActiveSession, createSession } = useChatStore()
   
   // Auto-hide header during response generation (compare mode only)
   useEffect(() => {
@@ -85,10 +84,6 @@ export default function Home() {
             <div className="flex-shrink-0 flex items-center justify-between p-3 sm:p-6 pb-2 sm:pb-4 bg-background">
               <div className="flex items-center gap-4">
                 <ViewModeToggle />
-                {/* Branch Selector - show when there's an active session */}
-                {activeSessionId && (
-                  <BranchSelector sessionId={activeSessionId} />
-                )}
               </div>
               
               <div className="flex gap-2">

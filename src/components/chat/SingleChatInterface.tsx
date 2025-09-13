@@ -11,7 +11,6 @@ import { MarkdownRenderer } from './MarkdownRenderer'
 import { SimplePromptEnhancer } from './SimplePromptEnhancer'
 import { SessionStats } from './SessionStats'
 import { SingleModelSelector } from './SingleModelSelector'
-import { MessageBranchButton } from './MessageBranchButton'
 import { useViewModeStore } from '@/lib/stores/viewMode'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useSettingsStore } from '@/lib/stores/settings'
@@ -269,15 +268,6 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
                     <MarkdownRenderer content={message.content} />
                   )}
                   
-                  {/* Add branch button for user messages */}
-                  {message.role === 'user' && activeSessionId && (
-                    <div className="absolute -right-12 top-6">
-                      <MessageBranchButton 
-                        message={message} 
-                        sessionId={activeSessionId}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
