@@ -1,7 +1,64 @@
 import { NextResponse } from 'next/server'
 
+// Type definitions for API responses
+interface OpenAIModel {
+  id: string
+  object: string
+  created: number
+  owned_by: string
+}
+
+interface OpenAIModelsResponse {
+  data: OpenAIModel[]
+  object: string
+}
+
+interface AnthropicModel {
+  id: string
+  name: string
+  provider: string
+  contextLength: number
+  inputCost: number
+  outputCost: number
+}
+
+interface GeminiModel {
+  name: string
+  displayName?: string
+  supportedGenerationMethods?: string[]
+  inputTokenLimit?: number
+}
+
+interface GeminiModelsResponse {
+  models: GeminiModel[]
+}
+
+interface OpenRouterModel {
+  id: string
+  name: string
+  context_length?: number
+  pricing?: {
+    prompt: string | number
+    completion: string | number
+  }
+}
+
+interface OpenRouterModelsResponse {
+  data: OpenRouterModel[]
+}
+
+interface FormattedModel {
+  id: string
+  name: string
+  provider: string
+  contextLength: number
+  inputCost: number
+  outputCost: number
+  isFree?: boolean
+}
+
 // Fetch OpenAI models
-async function fetchOpenAIModels(apiKey: string) {
+async function fetchOpenAIModels(apiKey: string): Promise<FormattedModel[]> {
   try {
     const response = await fetch('https://api.openai.com/v1/models', {
       headers: {
@@ -12,15 +69,15 @@ async function fetchOpenAIModels(apiKey: string) {
     
     if (!response.ok) return []
     
-    const data = await response.json()
+    const data: OpenAIModelsResponse = await response.json()
     
     // Filter for chat models only
-    const chatModels = data.data.filter((model: any) => 
+    const chatModels = data.data.filter((model: OpenAIModel) => 
       model.id.includes('gpt') && !model.id.includes('instruct')
     )
     
     // Map to our format with cost estimates
-    return chatModels.map((model: any) => ({
+    return chatModels.map((model: OpenAIModel): FormattedModel => ({
       id: model.id,
       name: model.id.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
       provider: 'openai',
@@ -75,7 +132,7 @@ function getOpenAIOutputCost(modelId: string): number {
 }
 
 // Fetch Anthropic models
-async function fetchAnthropicModels(apiKey: string) {
+async function fetchAnthropicModels(apiKey: string): Promise<AnthropicModel[]> {
   // Anthropic doesn't have a models endpoint, so we'll use a curated list of available models
   // We can validate the API key works with a test request
   try {
@@ -145,20 +202,20 @@ async function fetchAnthropicModels(apiKey: string) {
 }
 
 // Fetch Google Gemini models
-async function fetchGeminiModels(apiKey: string) {
+async function fetchGeminiModels(apiKey: string): Promise<FormattedModel[]> {
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`)
     
     if (!response.ok) return []
     
-    const data = await response.json()
+    const data: GeminiModelsResponse = await response.json()
     
     // Filter for Gemini models that support generateContent
-    const geminiModels = data.models.filter((model: any) => 
+    const geminiModels = data.models.filter((model: GeminiModel) => 
       model.supportedGenerationMethods?.includes('generateContent')
     )
     
-    return geminiModels.map((model: any) => ({
+    return geminiModels.map((model: GeminiModel): FormattedModel => ({
       id: model.name.replace('models/', ''),
       name: formatGeminiModelName(model.displayName || model.name),
       provider: 'gemini',
@@ -194,7 +251,7 @@ function getGeminiOutputCost(modelId: string): number {
 }
 
 // Fetch OpenRouter models
-async function fetchOpenRouterModels(apiKey: string) {
+async function fetchOpenRouterModels(apiKey: string): Promise<FormattedModel[]> {
   try {
     const response = await fetch('https://openrouter.ai/api/v1/models', {
       headers: {
@@ -205,10 +262,10 @@ async function fetchOpenRouterModels(apiKey: string) {
     
     if (!response.ok) return []
     
-    const data = await response.json()
+    const data: OpenRouterModelsResponse = await response.json()
     
     // Map models and mark free ones
-    return data.data.map((model: any) => {
+    return data.data.map((model: OpenRouterModel): FormattedModel => {
       const isFree = model.pricing?.prompt === '0' || 
                      model.pricing?.prompt === 0 || 
                      model.id.includes(':free')
@@ -218,11 +275,11 @@ async function fetchOpenRouterModels(apiKey: string) {
         name: `${model.name}${isFree ? ' (FREE)' : ''}`,
         provider: 'openrouter',
         contextLength: model.context_length || 4096,
-        inputCost: parseFloat(model.pricing?.prompt || 0) * 1000000, // Convert to per million tokens
-        outputCost: parseFloat(model.pricing?.completion || 0) * 1000000,
+        inputCost: parseFloat(String(model.pricing?.prompt || 0)) * 1000000, // Convert to per million tokens
+        outputCost: parseFloat(String(model.pricing?.completion || 0)) * 1000000,
         isFree
       }
-    }).sort((a: any, b: any) => {
+    }).sort((a: FormattedModel, b: FormattedModel) => {
       // Sort free models first
       if (a.isFree && !b.isFree) return -1
       if (!a.isFree && b.isFree) return 1

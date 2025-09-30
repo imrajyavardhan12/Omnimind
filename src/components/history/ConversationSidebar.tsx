@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { ChatSession, Message } from '@/lib/types'
 import { 
   MessageSquare, 
   Trash2, 
@@ -59,9 +60,15 @@ export function ConversationSidebar({ className }: ConversationSidebarProps) {
     setActiveSession(newSessionId)
   }
 
-  const getSessionStats = (session: any) => {
+  interface SessionStats {
+    totalMessages: number
+    totalTokens: number
+    totalCost: number
+  }
+
+  const getSessionStats = (session: ChatSession): SessionStats => {
     const stats = session.messages.reduce(
-      (acc: any, message: any) => {
+      (acc: SessionStats, message: Message) => {
         if (message.role === 'assistant' && message.provider) {
           acc.totalMessages++
           acc.totalTokens += message.tokens || 0

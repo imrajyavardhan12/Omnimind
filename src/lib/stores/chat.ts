@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { ChatSession, Message, ProviderName } from '../types'
+import { logger } from '../utils/logger'
 
 interface ChatState {
   sessions: ChatSession[]
@@ -163,7 +164,7 @@ export const useChatStore = create<ChatState>()(
     if (key) {
       const controller = state.abortControllers.get(key)
       if (controller) {
-        console.log(`Aborting controller for ${key}`)
+        logger.debug(`Aborting controller for ${key}`)
         controller.abort()
         set(state => {
           const newControllers = new Map(state.abortControllers)
@@ -182,10 +183,10 @@ export const useChatStore = create<ChatState>()(
 
   stopAllResponses: () => {
     const state = get()
-    console.log('Stopping all responses, active controllers:', state.abortControllers.size)
+    logger.debug('Stopping all responses, active controllers:', state.abortControllers.size)
     
     state.abortControllers.forEach((controller, key) => {
-      console.log(`Aborting controller for ${key}`)
+      logger.debug(`Aborting controller for ${key}`)
       try {
         controller.abort()
       } catch (error) {

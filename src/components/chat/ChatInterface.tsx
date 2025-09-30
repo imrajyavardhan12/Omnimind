@@ -9,6 +9,7 @@ import { useState } from "react"
 import { useSettingsStore } from "@/lib/stores/settings"
 import { useModelTabsStore } from "@/lib/stores/modelTabs"
 import { SimplePromptEnhancer } from "./SimplePromptEnhancer"
+import { logger } from "@/lib/utils/logger"
 
 interface Message {
   id: string
@@ -45,7 +46,7 @@ export function ChatInterface() {
     // This will use your existing chat functionality
     // For now, just clear the input
     setInput('')
-    console.log('Sending message:', input)
+    logger.debug('Sending message:', input)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

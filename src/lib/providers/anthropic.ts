@@ -1,4 +1,5 @@
 import { LLMProvider, ChatRequest, ChatResponse, StreamChunk, Model } from '../types'
+import { logger } from '../utils/logger'
 import { estimateTokens, calculateCost } from '../utils/tokenizer'
 
 // Fallback models when API is not available - updated with latest models
@@ -157,7 +158,7 @@ export class AnthropicProvider implements LLMProvider {
       while (true) {
         // Check if aborted before reading
         if (signal?.aborted) {
-          console.log('Anthropic stream aborted')
+          logger.debug('Anthropic stream aborted')
           reader.releaseLock()
           break
         }
@@ -172,7 +173,7 @@ export class AnthropicProvider implements LLMProvider {
         for (const line of lines) {
           // Check abort signal in the loop
           if (signal?.aborted) {
-            console.log('Anthropic stream aborted during processing')
+            logger.debug('Anthropic stream aborted during processing')
             reader.releaseLock()
             return
           }
@@ -205,7 +206,7 @@ export class AnthropicProvider implements LLMProvider {
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Anthropic stream aborted with error')
+        logger.debug('Anthropic stream aborted with error')
         return
       }
       throw error

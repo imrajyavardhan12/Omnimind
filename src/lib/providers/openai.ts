@@ -1,5 +1,6 @@
 import { LLMProvider, ChatRequest, ChatResponse, StreamChunk, Model } from '../types'
 import { estimateTokens, calculateCost } from '../utils/tokenizer'
+import { logger } from '../utils/logger'
 
 // Fallback models when API is not available
 export const openaiModels: Model[] = [
@@ -199,7 +200,7 @@ export class OpenAIProvider implements LLMProvider {
       while (true) {
         // Check if aborted before reading
         if (signal?.aborted) {
-          console.log('OpenAI stream aborted')
+          logger.debug('OpenAI stream aborted')
           reader.releaseLock()
           break
         }
@@ -214,7 +215,7 @@ export class OpenAIProvider implements LLMProvider {
         for (const line of lines) {
           // Check abort signal in the loop
           if (signal?.aborted) {
-            console.log('OpenAI stream aborted during processing')
+            logger.debug('OpenAI stream aborted during processing')
             reader.releaseLock()
             return
           }
@@ -248,7 +249,7 @@ export class OpenAIProvider implements LLMProvider {
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('OpenAI stream aborted with error')
+        logger.debug('OpenAI stream aborted with error')
         return
       }
       throw error

@@ -324,7 +324,7 @@ export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererPr
           ),
 
           // Custom inline code styles
-          code: ({ className, children, ...props }: any) => {
+          code: ({ className, children, ...props }: React.HTMLProps<HTMLElement> & { className?: string }) => {
             const isInline = !className || !className.startsWith('language-')
             
             if (isInline) {

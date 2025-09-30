@@ -30,6 +30,15 @@ export function FileUpload({
 
     setIsProcessing(true)
     try {
+      // Check total size limit including already selected files
+      const currentTotalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0)
+      const newFilesSize = Array.from(files).reduce((sum, f) => sum + f.size, 0)
+      const MAX_TOTAL_SIZE = 25 * 1024 * 1024 // 25MB
+      
+      if (currentTotalSize + newFilesSize > MAX_TOTAL_SIZE) {
+        throw new Error(`Total file size would exceed ${(MAX_TOTAL_SIZE / 1024 / 1024).toFixed(0)}MB limit. Currently using ${(currentTotalSize / 1024 / 1024).toFixed(1)}MB`)
+      }
+
       const filePromises = Array.from(files).map(processFile)
       const processedFiles = await Promise.all(filePromises)
       onFilesSelected(processedFiles)

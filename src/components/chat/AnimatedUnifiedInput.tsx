@@ -14,6 +14,7 @@ import { FileUpload } from './FileUpload'
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { FileAttachment } from '@/lib/types'
+import { logger } from '@/lib/utils/logger'
 
 interface AnimatedUnifiedInputProps {
   className?: string
@@ -85,9 +86,7 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
       let fullContent = ''
       
       try {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Sending to ${selectedModel.model.name} (${selectedModel.model.id}) via ${selectedModel.provider}`)
-        }
+        logger.debug(`Sending to ${selectedModel.model.name} (${selectedModel.model.id}) via ${selectedModel.provider}`)
         
         // Add system prompt to message if it exists
         let messageToSend = message
@@ -112,9 +111,7 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
         const abortController = new AbortController()
         useChatStore.getState().setAbortController(modelKey, abortController)
         
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Set abort controller for ${modelKey}`)
-        }
+        logger.debug(`Set abort controller for ${modelKey}`)
         
         // Make direct API call with specific model
         const response = await fetch('/api/chat', {
@@ -148,7 +145,7 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
             while (true) {
               // Check if aborted before each read
               if (abortController.signal.aborted) {
-                console.log(`${modelKey} stream aborted`)
+                logger.debug(`${modelKey} stream aborted`)
                 reader.cancel()
                 break
               }
@@ -163,7 +160,7 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
               for (const line of lines) {
                 // Check if aborted during processing
                 if (abortController.signal.aborted) {
-                  console.log(`${modelKey} stream aborted during processing`)
+                  logger.debug(`${modelKey} stream aborted during processing`)
                   reader.cancel()
                   break
                 }
@@ -186,9 +183,7 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
                     
                     // Handle final message with complete stats
                     if (parsed.done || parsed.finish_reason) {
-                      if (process.env.NODE_ENV === 'development') {
-                        console.log('Final message stats:', { tokens: parsed.tokens, cost: parsed.cost })
-                      }
+                      logger.debug('Final message stats:', { tokens: parsed.tokens, cost: parsed.cost })
                       const updateData: any = { content: fullContent }
                       if (parsed.tokens) updateData.tokens = parsed.tokens
                       if (parsed.cost) updateData.cost = parsed.cost
@@ -212,9 +207,7 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
         setTimeout(() => {
           const finalMessage = useChatStore.getState().getActiveSession()?.messages.find(m => m.id === assistantMessageId)
           if (finalMessage && (!finalMessage.tokens || !finalMessage.cost)) {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('Calculating missing stats for:', selectedModel.model.name)
-            }
+            logger.debug('Calculating missing stats for:', selectedModel.model.name)
             
             // Import tokenizer functions dynamically
             import('@/lib/utils/tokenizer').then(({ estimateTokens, calculateCost }) => {
@@ -234,16 +227,16 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
       } catch (error) {
         console.error(`Error sending to ${selectedModel.provider} (${selectedModel.model.name}):`, error)
         
-        // Check if error is due to abort
-        if (error instanceof Error && error.name === 'AbortError') {
-          useChatStore.getState().updateMessage(sessionId, assistantMessageId, {
-            content: fullContent || 'Response stopped by user'
-          })
-        } else {
-          useChatStore.getState().updateMessage(sessionId, assistantMessageId, {
-            content: 'Error: Failed to get response'
-          })
-        }
+        // Parse error for user-friendly message
+        const { parseError } = await import('@/lib/utils/errorHandler')
+        const errorInfo = parseError(error)
+        
+        // Update message with appropriate error
+        useChatStore.getState().updateMessage(sessionId, assistantMessageId, {
+          content: errorInfo.message === 'Request cancelled by user' && fullContent 
+            ? fullContent 
+            : `Error: ${errorInfo.message}`
+        })
       } finally {
         // Clean up for this specific model
         useChatStore.getState().setLoading(modelKey, false)
@@ -518,6 +511,8 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
                   size="sm"
                   disabled={!input.trim() || activeModels.length === 0 || isAnyLoading}
                   className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-md hover:shadow-lg transition-all duration-200 p-0 border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Send message"
+                  title="Send message (Enter)"
                 >
                   {isAnyLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin text-white" />
@@ -530,6 +525,8 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
                   disabled={!isAnyLoading}
                   size="sm"
                   variant={isAnyLoading ? "destructive" : "ghost"}
+                  aria-label="Stop all responses"
+                  title="Stop generating responses"
                   className={cn(
                     "flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200",
                     isAnyLoading 

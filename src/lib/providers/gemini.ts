@@ -1,4 +1,5 @@
 import { LLMProvider, ChatRequest, ChatResponse, StreamChunk, Model } from '../types'
+import { logger } from '../utils/logger'
 import { estimateTokens, calculateCost } from '../utils/tokenizer'
 
 // Fallback models when API is not available - updated with latest models
@@ -137,7 +138,7 @@ export class GeminiProvider implements LLMProvider {
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Gemini stream aborted')
+        logger.debug('Gemini stream aborted')
         return
       }
       throw error

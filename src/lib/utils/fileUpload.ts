@@ -7,7 +7,8 @@ export const SUPPORTED_FILE_TYPES = {
   video: ['video/mp4', 'video/mpeg', 'video/quicktime']
 }
 
-export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB per file
+export const MAX_TOTAL_FILE_SIZE = 25 * 1024 * 1024 // 25MB total
 
 export function isFileTypeSupported(fileType: string): boolean {
   return Object.values(SUPPORTED_FILE_TYPES).flat().includes(fileType)

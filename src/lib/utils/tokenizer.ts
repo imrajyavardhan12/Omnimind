@@ -1,15 +1,62 @@
-// Simple token estimation - in production you'd want a proper tokenizer library
-// This provides reasonable estimates for cost calculation
+/**
+ * Token estimation using js-tiktoken for accurate counting
+ * Falls back to simple estimation if tokenizer fails
+ */
 
-export function estimateTokens(text: string): number {
-  // Rough estimation: ~4 characters per token for English text
-  // This is a simplified approach - real tokenizers are more complex
+import { Tiktoken, encodingForModel } from 'js-tiktoken'
+
+// Cache for encoders to avoid recreating them
+let cachedEncoder: Tiktoken | null = null
+
+/**
+ * Get accurate token count using tiktoken
+ * Falls back to simple estimation on error
+ */
+export function estimateTokens(text: string, model: string = 'gpt-4'): number {
+  try {
+    // Use cached encoder or create new one
+    if (!cachedEncoder) {
+      try {
+        cachedEncoder = encodingForModel(model as any)
+      } catch (error) {
+        // If model not supported, use gpt-4 encoding (cl100k_base)
+        cachedEncoder = encodingForModel('gpt-4' as any)
+      }
+    }
+    
+    if (cachedEncoder) {
+      const tokens = cachedEncoder.encode(text)
+      return tokens.length
+    }
+    
+    // Fallback if encoder creation failed
+    return Math.ceil(text.length / 4)
+  } catch (error) {
+    // Fallback to simple estimation: ~4 characters per token
+    return Math.ceil(text.length / 4)
+  }
+}
+
+/**
+ * Simple token estimation without tiktoken (fallback)
+ * ~4 characters per token for English text
+ */
+export function estimateTokensSimple(text: string): number {
   return Math.ceil(text.length / 4)
+}
+
+/**
+ * Clear the cached encoder
+ */
+export function clearTokenizerCache(): void {
+  cachedEncoder = null
 }
 
 export function calculateCost(inputTokens: number, outputTokens: number, model: string): number {
   const costs = {
-    // OpenAI pricing (per 1K tokens)
+    // OpenAI pricing (per 1K tokens) - Updated with latest models
+    'gpt-4o': { input: 0.0025, output: 0.01 },
+    'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
     'gpt-4': { input: 0.03, output: 0.06 },
     'gpt-4-turbo': { input: 0.01, output: 0.03 },
     'gpt-3.5-turbo': { input: 0.001, output: 0.002 },

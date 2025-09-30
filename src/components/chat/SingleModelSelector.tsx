@@ -8,6 +8,7 @@ import { useSettingsStore } from '@/lib/stores/settings'
 import { ModelSelectionModal } from './ModelSelectionModal'
 import { cn } from '@/lib/utils'
 import { getProviderIcon } from '@/components/ui/provider-icons'
+import { Model } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -46,7 +47,7 @@ export function SingleModelSelector({ className }: SingleModelSelectorProps) {
     }
   }
 
-  const handleModelSelect = (model: any) => {
+  const handleModelSelect = (model: Model) => {
     setSelectedSingleModel(model)
     setShowModelModal(false)
   }

@@ -3,6 +3,7 @@ import { ProviderName, Message, ChatRequest } from '@/lib/types'
 import { useChatStore } from '@/lib/stores/chat'
 import { useSettingsStore } from '@/lib/stores/settings'
 import { estimateTokens, calculateCost } from '@/lib/utils/tokenizer'
+import { logger } from '@/lib/utils/logger'
 
 interface UseChatOptions {
   provider: ProviderName
@@ -125,7 +126,7 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
       while (true) {
         // Check if aborted before each read
         if (abortController.signal.aborted) {
-          console.log(`${requestKey} stream aborted`)
+          logger.debug(`${requestKey} stream aborted`)
           reader.cancel()
           break
         }
@@ -140,7 +141,7 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
         for (const line of lines) {
           // Check if aborted during processing
           if (abortController.signal.aborted) {
-            console.log(`${requestKey} stream aborted during processing`)
+            logger.debug(`${requestKey} stream aborted during processing`)
             reader.cancel()
             break
           }

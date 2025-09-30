@@ -9,6 +9,7 @@ import { useEnhancementStore } from '@/lib/stores/enhancement'
 import { useChat } from '@/hooks/useChat'
 import { ProviderName, FileAttachment } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/utils/logger'
 import { FileUpload } from './FileUpload'
 import { SimplePromptEnhancer } from './SimplePromptEnhancer'
 
@@ -76,7 +77,7 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
       let fullContent = ''
       
       try {
-        console.log(`Sending to ${selectedModel.model.name} (${selectedModel.model.id}) via ${selectedModel.provider} with key ${modelKey}`)
+        logger.debug(`Sending to ${selectedModel.model.name} (${selectedModel.model.id}) via ${selectedModel.provider} with key ${modelKey}`)
         
         // Add system prompt to message if it exists
         let messageToSend = message
@@ -101,7 +102,7 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
         const abortController = new AbortController()
         useChatStore.getState().setAbortController(modelKey, abortController)
         
-        console.log(`Set abort controller for ${modelKey}`)
+        logger.debug(`Set abort controller for ${modelKey}`)
         
         // Make direct API call with specific model
         const response = await fetch('/api/chat', {
@@ -135,7 +136,7 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
             while (true) {
               // Check if aborted before each read
               if (abortController.signal.aborted) {
-                console.log(`${modelKey} stream aborted`)
+                logger.debug(`${modelKey} stream aborted`)
                 reader.cancel()
                 break
               }
@@ -150,7 +151,7 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
               for (const line of lines) {
                 // Check if aborted during processing
                 if (abortController.signal.aborted) {
-                  console.log(`${modelKey} stream aborted during processing`)
+                  logger.debug(`${modelKey} stream aborted during processing`)
                   reader.cancel()
                   break
                 }
@@ -173,7 +174,7 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
                     
                     // Handle final message with complete stats
                     if (parsed.done || parsed.finish_reason) {
-                      console.log('Final message stats:', { tokens: parsed.tokens, cost: parsed.cost })
+                      logger.debug('Final message stats:', { tokens: parsed.tokens, cost: parsed.cost })
                       const updateData: any = { content: fullContent }
                       if (parsed.tokens) updateData.tokens = parsed.tokens
                       if (parsed.cost) updateData.cost = parsed.cost
@@ -197,7 +198,7 @@ export function TabifiedUnifiedInput({ className }: TabifiedUnifiedInputProps) {
         setTimeout(() => {
           const finalMessage = useChatStore.getState().getActiveSession()?.messages.find(m => m.id === assistantMessageId)
           if (finalMessage && (!finalMessage.tokens || !finalMessage.cost)) {
-            console.log('Calculating missing stats for:', selectedModel.model.name)
+            logger.debug('Calculating missing stats for:', selectedModel.model.name)
             
             // Import tokenizer functions dynamically
             import('@/lib/utils/tokenizer').then(({ estimateTokens, calculateCost }) => {

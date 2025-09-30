@@ -5,6 +5,7 @@ import { AnthropicProvider } from '@/lib/providers/anthropic'
 import { GeminiProvider } from '@/lib/providers/gemini'
 import { OpenRouterProvider } from '@/lib/providers/openrouter'
 import { ChatRequest, ProviderName } from '@/lib/types'
+import { logger } from '@/lib/utils/logger'
 
 const providers = {
   openai: new OpenAIProvider(),
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
       
       // Listen to the request's abort signal
       request.signal.addEventListener('abort', () => {
-        console.log(`Request aborted for ${provider}`)
+        logger.debug(`Request aborted for ${provider}`)
         abortController.abort()
       })
       
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
                 isStreamClosed = true
               } catch (error) {
                 // Controller might already be closed, ignore
-                console.log('Stream already closed')
+                logger.debug('Stream already closed')
               }
             }
           }
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
             for await (const chunk of providerInstance.stream(chatRequest, apiKey, abortController.signal)) {
               // Check if the request was aborted
               if (abortController.signal.aborted || request.signal.aborted) {
-                console.log(`Stream aborted for ${provider}`)
+                logger.debug(`Stream aborted for ${provider}`)
                 closeStream()
                 break
               }
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
             
             // Check if it's an abort error (user stopped the request)
             if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
-              console.log(`Stream aborted by user for ${provider}`)
+              logger.debug(`Stream aborted by user for ${provider}`)
               closeStream()
               return
             }
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
           }
         },
         cancel() {
-          console.log(`Stream cancelled for ${provider}`)
+          logger.debug(`Stream cancelled for ${provider}`)
           abortController.abort()
         }
       })

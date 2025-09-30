@@ -5,6 +5,7 @@ import { MessageSquare, Trash2, Clock, DollarSign, Hash, Search, Plus } from 'lu
 import { useChatStore } from '@/lib/stores/chat'
 import { formatCost, formatTokens } from '@/lib/utils/tokenizer'
 import { cn } from '@/lib/utils'
+import { ChatSession, Message } from '@/lib/types'
 
 interface ConversationHistoryProps {
   className?: string
@@ -32,9 +33,15 @@ export function ConversationHistory({ className }: ConversationHistoryProps) {
     setActiveSession(newSessionId)
   }
 
-  const getSessionStats = (session: any) => {
+  interface SessionStats {
+    totalMessages: number
+    totalTokens: number
+    totalCost: number
+  }
+
+  const getSessionStats = (session: ChatSession): SessionStats => {
     const stats = session.messages.reduce(
-      (acc: any, message: any) => {
+      (acc: SessionStats, message: Message) => {
         if (message.role === 'assistant' && message.provider) {
           acc.totalMessages++
           acc.totalTokens += message.tokens || 0

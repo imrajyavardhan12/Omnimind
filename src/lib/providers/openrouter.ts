@@ -1,4 +1,5 @@
 import { LLMProvider, ChatRequest, ChatResponse, StreamChunk, Model } from '../types'
+import { logger } from '../utils/logger'
 import { estimateTokens, calculateCost } from '../utils/tokenizer'
 
 // Minimal fallback models when API is not available
@@ -141,7 +142,7 @@ export class OpenRouterProvider implements LLMProvider {
       while (true) {
         // Check if aborted before reading
         if (signal?.aborted) {
-          console.log('OpenRouter stream aborted')
+          logger.debug('OpenRouter stream aborted')
           reader.releaseLock()
           break
         }
@@ -156,7 +157,7 @@ export class OpenRouterProvider implements LLMProvider {
         for (const line of lines) {
           // Check abort signal in the loop
           if (signal?.aborted) {
-            console.log('OpenRouter stream aborted during processing')
+            logger.debug('OpenRouter stream aborted during processing')
             reader.releaseLock()
             return
           }
@@ -190,7 +191,7 @@ export class OpenRouterProvider implements LLMProvider {
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('OpenRouter stream aborted with error')
+        logger.debug('OpenRouter stream aborted with error')
         return
       }
       throw error
