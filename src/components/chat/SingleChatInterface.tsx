@@ -13,6 +13,7 @@ import { SessionStats } from './SessionStats'
 import { SingleModelSelector } from './SingleModelSelector'
 import { FileUpload } from './FileUpload'
 import { MessageAttachments } from './MessageAttachments'
+import { MessageStats } from './MessageStats'
 import { useViewModeStore } from '@/lib/stores/viewMode'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useSettingsStore } from '@/lib/stores/settings'
@@ -288,7 +289,10 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
                       {message.content}
                     </div>
                   ) : (
-                    <MarkdownRenderer content={message.content} />
+                    <>
+                      <MarkdownRenderer content={message.content} />
+                      <MessageStats message={message} className="mt-4" />
+                    </>
                   )}
                   
                 </div>

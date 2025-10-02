@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import Image from 'next/image'
+import Link from 'next/link'
 import './globals.css'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -32,7 +33,7 @@ export default function RootLayout({
               <div className="h-screen bg-background overflow-x-hidden overflow-y-hidden flex flex-col">
               <header className="flex-shrink-0 border-b border-border px-3 sm:px-6 py-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 sm:gap-3">
+                  <Link href="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer">
                     <Image
                       src="/logos/icons8-mind-100.png"
                       alt="OmniMind Logo"
@@ -46,7 +47,7 @@ export default function RootLayout({
                       </h1>
                       <p className="text-xs sm:text-sm text-muted-foreground">Multi-LLM Tool</p>
                     </div>
-                  </div>
+                  </Link>
                   <div className="flex items-center gap-1 sm:gap-2">
                     <a
                       href="https://github.com/imrajyavardhan12"
