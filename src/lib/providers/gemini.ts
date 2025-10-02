@@ -156,9 +156,30 @@ export class GeminiProvider implements LLMProvider {
           parts: [{ text: `System: ${message.content}` }]
         })
       } else if (message.role === 'user') {
+        const parts = []
+        
+        // Add text content if present
+        if (message.content) {
+          parts.push({ text: message.content })
+        }
+        
+        // Handle multimodal messages with attachments
+        if (message.attachments && message.attachments.length > 0) {
+          message.attachments.forEach((attachment: any) => {
+            if (attachment.type.startsWith('image/')) {
+              parts.push({
+                inline_data: {
+                  mime_type: attachment.type,
+                  data: attachment.data
+                }
+              })
+            }
+          })
+        }
+        
         contents.push({
           role: 'user',
-          parts: [{ text: message.content }]
+          parts: parts
         })
       } else if (message.role === 'assistant') {
         contents.push({

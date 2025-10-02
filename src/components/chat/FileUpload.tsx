@@ -42,9 +42,19 @@ export function FileUpload({
       const filePromises = Array.from(files).map(processFile)
       const processedFiles = await Promise.all(filePromises)
       onFilesSelected(processedFiles)
+      
+      // Reset file input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     } catch (error) {
       console.error('Error processing files:', error)
       alert(error instanceof Error ? error.message : 'Failed to process files')
+      
+      // Reset file input even on error
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     } finally {
       setIsProcessing(false)
     }

@@ -69,10 +69,48 @@ export class OpenRouterProvider implements LLMProvider {
       },
       body: JSON.stringify({
         model: request.model,
-        messages: request.messages.map(msg => ({
-          role: msg.role,
-          content: msg.content
-        })),
+        messages: request.messages.map(msg => {
+          // Handle multimodal messages with attachments (OpenAI-compatible format)
+          if (msg.attachments && msg.attachments.length > 0) {
+            const content = []
+            
+            // Add text content if present
+            if (msg.content) {
+              content.push({
+                type: "text",
+                text: msg.content
+              })
+            }
+            
+            // Add image attachments
+            msg.attachments.forEach(attachment => {
+              if (attachment.type.startsWith('image/')) {
+                const dataUrl = `data:${attachment.type};base64,${attachment.data}`
+                logger.debug(`OpenRouter: Adding image attachment`, {
+                  type: attachment.type,
+                  dataLength: attachment.data?.length || 0,
+                  dataUrlLength: dataUrl.length
+                })
+                content.push({
+                  type: "image_url",
+                  image_url: {
+                    url: dataUrl
+                  }
+                })
+              }
+            })
+            
+            return {
+              role: msg.role,
+              content: content
+            }
+          }
+          
+          return {
+            role: msg.role,
+            content: msg.content
+          }
+        }),
         temperature: request.temperature || 0.7,
         max_tokens: request.maxTokens || 1000,
         stream: false
@@ -116,10 +154,40 @@ export class OpenRouterProvider implements LLMProvider {
       },
       body: JSON.stringify({
         model: request.model,
-        messages: request.messages.map(msg => ({
-          role: msg.role,
-          content: msg.content
-        })),
+        messages: request.messages.map(msg => {
+          // Handle multimodal messages with attachments (same logic as complete method)
+          if (msg.attachments && msg.attachments.length > 0) {
+            const content = []
+            
+            if (msg.content) {
+              content.push({
+                type: "text",
+                text: msg.content
+              })
+            }
+            
+            msg.attachments.forEach(attachment => {
+              if (attachment.type.startsWith('image/')) {
+                content.push({
+                  type: "image_url",
+                  image_url: {
+                    url: `data:${attachment.type};base64,${attachment.data}`
+                  }
+                })
+              }
+            })
+            
+            return {
+              role: msg.role,
+              content: content
+            }
+          }
+          
+          return {
+            role: msg.role,
+            content: msg.content
+          }
+        }),
         temperature: request.temperature || 0.7,
         max_tokens: request.maxTokens || 1000,
         stream: true

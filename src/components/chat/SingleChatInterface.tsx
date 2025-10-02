@@ -11,13 +11,15 @@ import { MarkdownRenderer } from './MarkdownRenderer'
 import { SimplePromptEnhancer } from './SimplePromptEnhancer'
 import { SessionStats } from './SessionStats'
 import { SingleModelSelector } from './SingleModelSelector'
+import { FileUpload } from './FileUpload'
+import { MessageAttachments } from './MessageAttachments'
 import { useViewModeStore } from '@/lib/stores/viewMode'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useSettingsStore } from '@/lib/stores/settings'
 import { useChatStore } from '@/lib/stores/chat'
 import { useChat } from '@/hooks/useChat'
 import { useIsClient } from '@/hooks/useIsClient'
-import { Message } from '@/lib/types'
+import { Message, FileAttachment } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface SingleChatInterfaceProps {
@@ -28,6 +30,7 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
+  const [selectedFiles, setSelectedFiles] = useState<FileAttachment[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isClient = useIsClient()
@@ -98,13 +101,27 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
   // Use the shared toggle function from the store
   const toggleHeader = toggleHeaderVisibility
 
+  // Handle file upload
+  const handleFilesSelected = (files: FileAttachment[]) => {
+    setSelectedFiles(prev => [...prev, ...files])
+  }
+
+  const handleRemoveFile = (fileId: string) => {
+    setSelectedFiles(prev => prev.filter(f => f.id !== fileId))
+  }
+
   // Handle send message
   const handleSend = async () => {
     if (!input.trim() || !selectedSingleModel || isStreaming) return
 
     const userInput = input.trim()
+    const attachments = selectedFiles.length > 0 ? selectedFiles : undefined
+    
     setInput('')
     setIsTyping(true)
+    
+    // Clear selected files after sending
+    setSelectedFiles([])
 
     // Create session if none exists
     if (!activeSessionId) {
@@ -112,7 +129,7 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
     }
 
     try {
-      await sendMessage(userInput)
+      await sendMessage(userInput, attachments)
       incrementModelUsage(selectedSingleModel.id)
     } catch (error) {
       console.error('Failed to send message:', error)
@@ -260,6 +277,12 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
                     ? "bg-muted/30 border border-border/50" 
                     : "bg-background border border-border/30"
                 )}>
+                  {message.attachments && message.attachments.length > 0 && (
+                    <MessageAttachments 
+                      attachments={message.attachments}
+                      className="mb-4"
+                    />
+                  )}
                   {message.role === 'user' ? (
                     <div className="text-foreground whitespace-pre-wrap leading-relaxed">
                       {message.content}
@@ -449,6 +472,28 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
                 />
               </div>
 
+              {/* Selected Files Display */}
+              {selectedFiles.length > 0 && (
+                <div className="mb-4 p-3 bg-muted/30 rounded-lg">
+                  <div className="text-xs text-muted-foreground mb-2">
+                    {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} attached
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedFiles.map((file) => (
+                      <div key={file.id} className="flex items-center gap-1 px-2 py-1 bg-background rounded text-xs">
+                        <span>{file.name}</span>
+                        <button
+                          onClick={() => handleRemoveFile(file.id)}
+                          className="text-muted-foreground hover:text-foreground ml-1"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Prompt Enhancement */}
               {input.trim().length > 10 && selectedSingleModel && (
                 <div className="mb-4 flex justify-center">
@@ -476,8 +521,16 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
                   {selectedSingleModel && "Press Enter to send, Shift+Enter for new line"}
                 </div>
 
-                {/* Right side - Send and Stop buttons */}
+                {/* Right side - File Upload, Send and Stop buttons */}
                 <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <FileUpload
+                      onFilesSelected={handleFilesSelected}
+                      selectedFiles={selectedFiles}
+                      onRemoveFile={handleRemoveFile}
+                      disabled={!selectedSingleModel || isStreaming}
+                    />
+                  </div>
                   <Button
                     onClick={handleSend}
                     size="sm"

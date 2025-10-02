@@ -23,15 +23,21 @@ export function MessageAttachments({ attachments, className }: MessageAttachment
           <div key={file.id} className="border rounded-lg p-3 bg-muted">
             {category === 'images' ? (
               <div className="space-y-2">
-                <div className="relative w-full max-w-sm">
-                  <Image
-                    src={file.url || ''}
-                    alt={file.name}
-                    width={300}
-                    height={200}
-                    className="rounded object-cover w-full h-auto max-h-48"
-                  />
-                </div>
+                {file.url ? (
+                  <div className="relative w-full max-w-sm">
+                    <Image
+                      src={file.url}
+                      alt={file.name}
+                      width={300}
+                      height={200}
+                      className="rounded object-cover w-full h-auto max-h-48"
+                    />
+                  </div>
+                ) : (
+                  <div className="relative w-full max-w-sm p-4 border-2 border-dashed border-border rounded bg-muted/20 flex items-center justify-center text-muted-foreground">
+                    <span className="text-sm">Image preview unavailable</span>
+                  </div>
+                )}
                 <div className="text-xs text-muted-foreground">
                   <div className="font-medium">{file.name}</div>
                   <div>{formatFileSize(file.size)}</div>

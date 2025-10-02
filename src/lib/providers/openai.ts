@@ -83,10 +83,16 @@ export class OpenAIProvider implements LLMProvider {
             // Add image attachments
             msg.attachments.forEach(attachment => {
               if (attachment.type.startsWith('image/')) {
+                const dataUrl = `data:${attachment.type};base64,${attachment.data}`
+                logger.debug(`OpenAI: Adding image attachment`, {
+                  type: attachment.type,
+                  dataLength: attachment.data?.length || 0,
+                  dataUrlLength: dataUrl.length
+                })
                 content.push({
                   type: "image_url",
                   image_url: {
-                    url: `data:${attachment.type};base64,${attachment.data}`
+                    url: dataUrl
                   }
                 })
               }

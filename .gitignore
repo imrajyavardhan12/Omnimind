@@ -42,5 +42,7 @@ next-env.d.ts
 # Claude Code settings
 .claude/
 claude.md
-
 IMPROVEMENTS.md
+PRE_DEPLOYMENT_CHECKLIST.md
+*.md
+!README.md

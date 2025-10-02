@@ -28,7 +28,7 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
   
   const { getApiKey, selectedModels, temperature, maxTokens } = useSettingsStore()
 
-  const sendMessage = useCallback(async (content: string) => {
+  const sendMessage = useCallback(async (content: string, attachments?: import('@/lib/types').FileAttachment[]) => {
     const apiKey = getApiKey(provider)
     if (!apiKey) {
       throw new Error(`No API key configured for ${provider}`)
@@ -51,7 +51,8 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
         id: crypto.randomUUID(),
         role: 'user',
         content,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        attachments: attachments
       }
       addMessage(sessionId, userMessage)
     } else {
@@ -60,7 +61,8 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
         id: crypto.randomUUID(),
         role: 'user',
         content,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        attachments: attachments
       }
     }
 
@@ -90,7 +92,10 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
 
     try {
       const chatRequest: ChatRequest = {
-        messages: [...session.messages, userMessage],
+        messages: [...session.messages, {
+          ...userMessage,
+          attachments: attachments
+        }],
         model: modelIdOverride || selectedModels[provider],
         temperature,
         maxTokens,

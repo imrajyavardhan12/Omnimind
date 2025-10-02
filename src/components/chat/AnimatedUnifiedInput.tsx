@@ -56,7 +56,12 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
     }
 
     const message = input.trim()
+    // Save attachments to variable BEFORE clearing state (critical!)
+    const attachments = selectedFiles.length > 0 ? selectedFiles : undefined
+    
     setInput('')
+    // Clear selected files after saving to variable
+    setSelectedFiles([])
 
     // Add user message with active models tracking and attachments
     const { addMessage } = useChatStore.getState()
@@ -67,12 +72,9 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
       timestamp: Date.now(),
       // Track which models are currently active for this message
       activeModels: activeModels.map(sm => `${sm.provider}:${sm.model.id}`),
-      attachments: selectedFiles.length > 0 ? selectedFiles : undefined
+      attachments: attachments
     }
     addMessage(sessionId, userMessage)
-    
-    // Clear selected files after sending
-    setSelectedFiles([])
 
     // Send to each model individually with direct API calls
     const sendPromises = activeModels.map(async (selectedModel) => {
@@ -113,6 +115,46 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
         
         logger.debug(`Set abort controller for ${modelKey}`)
         
+        // Get session messages - but use our fresh userMessage with full attachment data
+        // instead of potentially persisted message with cleared data
+        const storedSession = useChatStore.getState().getActiveSession()
+        const previousMessages = storedSession?.messages.slice(0, -1) || []
+        
+        // Build final user message with system prompt if configured
+        let finalUserMessage = { ...userMessage }
+        if (selectedModel.settings.systemPrompt.trim()) {
+          finalUserMessage = {
+            ...finalUserMessage,
+            content: `${selectedModel.settings.systemPrompt}\n\nUser: ${finalUserMessage.content}`
+          }
+        }
+        
+        // Use previousMessages + our fresh userMessage (with full attachments data)
+        const sessionMessages = [...previousMessages, finalUserMessage]
+        
+        // Build API request payload
+        const apiPayload = {
+          messages: sessionMessages,
+          model: selectedModel.model.id,
+          temperature: selectedModel.settings.temperature,
+          maxTokens: selectedModel.settings.maxTokens,
+          stream: true,
+          provider: selectedModel.provider
+        }
+        
+        // Debug: Log the messages being sent
+        logger.debug(`Sending ${sessionMessages.length} messages to ${selectedModel.provider}`)
+        const lastMessage = sessionMessages[sessionMessages.length - 1]
+        if (lastMessage) {
+          logger.debug(`Last message:`, {
+            role: lastMessage.role,
+            contentLength: lastMessage.content?.length,
+            hasAttachments: !!lastMessage.attachments,
+            attachmentCount: lastMessage.attachments?.length || 0,
+            attachmentDataLength: lastMessage.attachments?.[0]?.data?.length || 0
+          })
+        }
+        
         // Make direct API call with specific model
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -121,19 +163,7 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
             'Content-Type': 'application/json',
             [`x-api-key-${selectedModel.provider}`]: useSettingsStore.getState().getApiKey(selectedModel.provider) || ''
           },
-          body: JSON.stringify({
-            messages: [...useChatStore.getState().getActiveSession()?.messages || [], {
-              id: crypto.randomUUID(),
-              role: 'user',
-              content: messageToSend,
-              timestamp: Date.now()
-            }],
-            model: selectedModel.model.id,
-            temperature: selectedModel.settings.temperature,
-            maxTokens: selectedModel.settings.maxTokens,
-            stream: true,
-            provider: selectedModel.provider
-          })
+          body: JSON.stringify(apiPayload)
         })
         
         if (response.ok && response.body) {

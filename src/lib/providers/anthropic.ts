@@ -87,10 +87,44 @@ export class AnthropicProvider implements LLMProvider {
         temperature: request.temperature || 0.7,
         messages: request.messages
           .filter(msg => msg.role !== 'system')
-          .map(msg => ({
-            role: msg.role,
-            content: msg.content
-          })),
+          .map(msg => {
+            // Handle multimodal messages with attachments
+            if (msg.attachments && msg.attachments.length > 0) {
+              const content = []
+              
+              // Add text content if present
+              if (msg.content) {
+                content.push({
+                  type: "text",
+                  text: msg.content
+                })
+              }
+              
+              // Add image attachments
+              msg.attachments.forEach(attachment => {
+                if (attachment.type.startsWith('image/')) {
+                  content.push({
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: attachment.type,
+                      data: attachment.data
+                    }
+                  })
+                }
+              })
+              
+              return {
+                role: msg.role,
+                content: content
+              }
+            }
+            
+            return {
+              role: msg.role,
+              content: msg.content
+            }
+          }),
         stream: false
       })
     })
@@ -134,10 +168,42 @@ export class AnthropicProvider implements LLMProvider {
         temperature: request.temperature || 0.7,
         messages: request.messages
           .filter(msg => msg.role !== 'system')
-          .map(msg => ({
-            role: msg.role,
-            content: msg.content
-          })),
+          .map(msg => {
+            // Handle multimodal messages with attachments (same logic as complete method)
+            if (msg.attachments && msg.attachments.length > 0) {
+              const content = []
+              
+              if (msg.content) {
+                content.push({
+                  type: "text",
+                  text: msg.content
+                })
+              }
+              
+              msg.attachments.forEach(attachment => {
+                if (attachment.type.startsWith('image/')) {
+                  content.push({
+                    type: "image",
+                    source: {
+                      type: "base64",
+                      media_type: attachment.type,
+                      data: attachment.data
+                    }
+                  })
+                }
+              })
+              
+              return {
+                role: msg.role,
+                content: content
+              }
+            }
+            
+            return {
+              role: msg.role,
+              content: msg.content
+            }
+          }),
         stream: true
       })
     })
