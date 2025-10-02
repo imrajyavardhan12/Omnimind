@@ -46,10 +46,30 @@ const defaultProviders: Record<ProviderName, ProviderConfig> = {
   }
 }
 
+// Helper to initialize providers with API key status
+const initializeProviders = (): Record<ProviderName, ProviderConfig> => {
+  const providers = { ...defaultProviders }
+  
+  // Check which providers have stored API keys
+  Object.keys(providers).forEach((providerKey) => {
+    const provider = providerKey as ProviderName
+    const key = `apikey_${provider}`
+    const hasKey = !!secureRetrieve(key)
+    
+    providers[provider] = {
+      ...providers[provider],
+      apiKey: hasKey ? '***' : '',
+      enabled: hasKey
+    }
+  })
+  
+  return providers
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set, get) => ({
-      providers: defaultProviders,
+      providers: initializeProviders(),
       selectedModels: {
         openai: 'gpt-4',
         anthropic: 'claude-3-5-sonnet-20241022',
@@ -137,10 +157,7 @@ export const useSettingsStore = create<SettingsState>()(
           // Migrate from old version - ensure all providers exist
           return {
             ...persistedState,
-            providers: {
-              ...defaultProviders,
-              ...persistedState.providers
-            },
+            providers: initializeProviders(),
             selectedModels: {
               openai: 'gpt-4',
               anthropic: 'claude-3-5-sonnet-20241022',
@@ -151,6 +168,15 @@ export const useSettingsStore = create<SettingsState>()(
           }
         }
         return persistedState
+      },
+      // Called after rehydration from storage
+      onRehydrateStorage: () => {
+        return (state) => {
+          if (state) {
+            // Re-check API key status after loading from localStorage
+            state.providers = initializeProviders()
+          }
+        }
       },
       // Don't persist API keys in localStorage - they're handled separately
       partialize: (state) => ({
