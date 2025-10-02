@@ -1,46 +1,11 @@
 import { LLMProvider, ChatRequest, ChatResponse, StreamChunk, Model } from '../types'
 import { logger } from '../utils/logger'
 import { estimateTokens, calculateCost } from '../utils/tokenizer'
-
-// Fallback models when API is not available - updated with latest models
-export const geminiModels: Model[] = [
-  {
-    id: 'gemini-1.5-pro-latest',
-    name: 'Gemini 1.5 Pro',
-    provider: 'gemini',
-    contextLength: 2097152, // 2M tokens
-    inputCost: 0.00125,
-    outputCost: 0.005
-  },
-  {
-    id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash',
-    provider: 'gemini',
-    contextLength: 1048576, // 1M tokens
-    inputCost: 0.000075,
-    outputCost: 0.0003
-  },
-  {
-    id: 'gemini-1.5-flash-8b',
-    name: 'Gemini 1.5 Flash 8B',
-    provider: 'gemini',
-    contextLength: 1048576,
-    inputCost: 0.0000375,
-    outputCost: 0.00015
-  },
-  {
-    id: 'gemini-pro',
-    name: 'Gemini Pro',
-    provider: 'gemini',
-    contextLength: 32768,
-    inputCost: 0.0005,
-    outputCost: 0.0015
-  }
-]
+import { geminiVerifiedModels } from '../models/verified-models'
 
 export class GeminiProvider implements LLMProvider {
   name = 'gemini' as const
-  models = geminiModels
+  models = geminiVerifiedModels as Model[]
 
   async validateAPIKey(apiKey: string): Promise<boolean> {
     try {

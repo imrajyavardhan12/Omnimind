@@ -1,14 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Plus, Check, Search, Loader2, RefreshCw } from 'lucide-react'
+import { X, Plus, Check, Search, Loader2 } from 'lucide-react'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { Model, ProviderName } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { getProviderIcon } from '@/components/ui/provider-icons'
-import { useDynamicModels } from '@/hooks/useDynamicModels'
 import { useSettingsStore } from '@/lib/stores/settings'
 import { Portal } from '@/components/ui/portal'
+import { 
+  openaiVerifiedModels, 
+  anthropicVerifiedModels, 
+  geminiVerifiedModels, 
+  openrouterVerifiedModels 
+} from '@/lib/models/verified-models'
 
 interface ModelSelectionModalProps {
   isOpen: boolean
@@ -23,30 +28,12 @@ interface ModelsByProvider {
 
 export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode = false }: ModelSelectionModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [dynamicModels, setDynamicModels] = useState<Model[]>([])
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const { getAllAvailableModels, addModel, isModelSelected, canAddMore } = useModelTabsStore()
   const { providers } = useSettingsStore()
   
-  // Load dynamic models for each provider
-  const openaiModels = useDynamicModels('openai')
-  const anthropicModels = useDynamicModels('anthropic')
-  const geminiModels = useDynamicModels('gemini')
-  const openrouterModels = useDynamicModels('openrouter')
-  
-  useEffect(() => {
-    // Combine all dynamic models, use fallback if API fails
-    const allDynamicModels = [
-      ...(openaiModels.models.length > 0 ? openaiModels.models : getAllAvailableModels().filter(m => m.provider === 'openai')),
-      ...(anthropicModels.models.length > 0 ? anthropicModels.models : getAllAvailableModels().filter(m => m.provider === 'anthropic')),
-      ...(geminiModels.models.length > 0 ? geminiModels.models : getAllAvailableModels().filter(m => m.provider === 'gemini')),
-      ...(openrouterModels.models.length > 0 ? openrouterModels.models : getAllAvailableModels().filter(m => m.provider === 'openrouter'))
-    ]
-    setDynamicModels(allDynamicModels)
-  }, [openaiModels.models, anthropicModels.models, geminiModels.models, openrouterModels.models, getAllAvailableModels])
-  
-  // Use dynamic models if available, otherwise use fallback
-  const allModels = dynamicModels.length > 0 ? dynamicModels : getAllAvailableModels()
+  // Use verified models instead of dynamic API fetching
+  const allModels = getAllAvailableModels()
   
   // Group models by provider
   const modelsByProvider: ModelsByProvider = allModels.reduce((acc, model) => {
@@ -79,27 +66,8 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
     }
   }
 
-  const isProviderLoading = (provider: string) => {
-    switch (provider) {
-      case 'openai': return openaiModels.loading
-      case 'anthropic': return anthropicModels.loading
-      case 'gemini': return geminiModels.loading
-      case 'openrouter': return openrouterModels.loading
-      default: return false
-    }
-  }
-
-  const refreshProvider = async (provider: ProviderName) => {
-    setLoadingProvider(provider)
-    // The useDynamicModels hook will automatically refresh when the component re-renders
-    // We can force a refresh by clearing and re-setting the API key
-    const { getApiKey } = useSettingsStore.getState()
-    const apiKey = getApiKey(provider)
-    if (apiKey) {
-      // Trigger a re-fetch by updating a state
-      setLoadingProvider(null)
-    }
-  }
+  // No loading needed - models are now static/verified
+  const isProviderLoading = (provider: string) => false
 
   const handleAddModel = (model: Model) => {
     if (singleMode) {
@@ -158,15 +126,7 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
                     <h3 className="text-lg font-semibold">{getProviderDisplayName(provider)}</h3>
                     <span className="text-sm text-muted-foreground">({models.length} models)</span>
                     {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {hasApiKey && (
-                      <button
-                        onClick={() => refreshProvider(provider as ProviderName)}
-                        className="ml-auto p-1 hover:bg-accent rounded-md transition-colors"
-                        title="Refresh models"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </button>
-                    )}
+
                   </div>
                   
                   {!hasApiKey && (

@@ -1,46 +1,11 @@
 import { LLMProvider, ChatRequest, ChatResponse, StreamChunk, Model } from '../types'
 import { logger } from '../utils/logger'
 import { estimateTokens, calculateCost } from '../utils/tokenizer'
-
-// Minimal fallback models when API is not available
-export const openrouterModels: Model[] = [
-  {
-    id: 'meta-llama/llama-3.2-3b-instruct:free',
-    name: 'Llama 3.2 3B (FREE)',
-    provider: 'openrouter',
-    contextLength: 131072,
-    inputCost: 0,
-    outputCost: 0
-  },
-  {
-    id: 'google/gemma-2-9b-it:free',
-    name: 'Gemma 2 9B (FREE)',
-    provider: 'openrouter',
-    contextLength: 8192,
-    inputCost: 0,
-    outputCost: 0
-  },
-  {
-    id: 'openai/gpt-4o-mini',
-    name: 'GPT-4o Mini',
-    provider: 'openrouter',
-    contextLength: 128000,
-    inputCost: 0.00015,
-    outputCost: 0.0006
-  },
-  {
-    id: 'anthropic/claude-3-haiku',
-    name: 'Claude 3 Haiku',
-    provider: 'openrouter',
-    contextLength: 200000,
-    inputCost: 0.00025,
-    outputCost: 0.00125
-  }
-]
+import { openrouterVerifiedModels, getModelById } from '../models/verified-models'
 
 export class OpenRouterProvider implements LLMProvider {
   name = 'openrouter' as const
-  models = openrouterModels
+  models = openrouterVerifiedModels as Model[]
 
   async validateAPIKey(apiKey: string): Promise<boolean> {
     try {
@@ -143,6 +108,35 @@ export class OpenRouterProvider implements LLMProvider {
   }
 
   async* stream(request: ChatRequest, apiKey: string, signal?: AbortSignal): AsyncGenerator<StreamChunk> {
+    // Check if model supports streaming
+    const modelInfo = getModelById('openrouter', request.model)
+    const supportsStreaming = modelInfo?.capabilities?.streaming !== false
+    
+    // For models that don't support streaming (mainly free models), use complete() instead
+    if (!supportsStreaming) {
+      logger.debug(`OpenRouter: Model ${request.model} doesn't support streaming, using complete() fallback`)
+      try {
+        const response = await this.complete(request, apiKey, signal)
+        // Yield the complete response as a single chunk
+        yield {
+          id: response.id,
+          content: response.content,
+          done: false
+        }
+        yield {
+          id: response.id,
+          content: '',
+          done: true,
+          tokens: response.tokens?.total
+        }
+        return
+      } catch (error) {
+        logger.error('OpenRouter non-streaming model error:', error)
+        throw error
+      }
+    }
+    
+    // Regular streaming for models that support it
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       signal,

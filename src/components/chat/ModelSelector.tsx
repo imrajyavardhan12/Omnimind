@@ -6,11 +6,13 @@ import { ProviderName, Model } from '@/lib/types'
 import { useSettingsStore } from '@/lib/stores/settings'
 import { cn } from '@/lib/utils'
 
-// Import all provider models
-import { openaiModels } from '@/lib/providers/openai'
-import { anthropicModels } from '@/lib/providers/anthropic'
-import { geminiModels } from '@/lib/providers/gemini'
-import { openrouterModels } from '@/lib/providers/openrouter'
+// Import all verified models
+import { 
+  openaiVerifiedModels, 
+  anthropicVerifiedModels, 
+  geminiVerifiedModels, 
+  openrouterVerifiedModels 
+} from '@/lib/models/verified-models'
 
 interface ModelSelectorProps {
   provider: ProviderName
@@ -18,10 +20,10 @@ interface ModelSelectorProps {
 }
 
 const providerModels = {
-  openai: openaiModels,
-  anthropic: anthropicModels,
-  gemini: geminiModels,
-  openrouter: openrouterModels
+  openai: openaiVerifiedModels as Model[],
+  anthropic: anthropicVerifiedModels as Model[],
+  gemini: geminiVerifiedModels as Model[],
+  openrouter: openrouterVerifiedModels as Model[]
 }
 
 export function ModelSelector({ provider, className }: ModelSelectorProps) {

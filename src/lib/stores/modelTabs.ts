@@ -2,11 +2,13 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Model, ProviderName } from '../types'
 
-// Import all provider models
-import { openaiModels } from '../providers/openai'
-import { anthropicModels } from '../providers/anthropic'
-import { geminiModels } from '../providers/gemini'
-import { openrouterModels } from '../providers/openrouter'
+// Import all verified models
+import { 
+  openaiVerifiedModels, 
+  anthropicVerifiedModels, 
+  geminiVerifiedModels, 
+  openrouterVerifiedModels 
+} from '../models/verified-models'
 
 export interface ModelSettings {
   temperature: number
@@ -39,10 +41,10 @@ interface ModelTabsState {
 
 // Combine all models from all providers
 const allModels = [
-  ...openaiModels,
-  ...anthropicModels, 
-  ...geminiModels,
-  ...openrouterModels
+  ...openaiVerifiedModels,
+  ...anthropicVerifiedModels, 
+  ...geminiVerifiedModels,
+  ...openrouterVerifiedModels
 ]
 
 export const useModelTabsStore = create<ModelTabsState>()(

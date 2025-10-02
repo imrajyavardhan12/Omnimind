@@ -1,46 +1,11 @@
 import { LLMProvider, ChatRequest, ChatResponse, StreamChunk, Model } from '../types'
 import { estimateTokens, calculateCost } from '../utils/tokenizer'
 import { logger } from '../utils/logger'
-
-// Fallback models when API is not available
-export const openaiModels: Model[] = [
-  {
-    id: 'gpt-4o',
-    name: 'GPT-4o',
-    provider: 'openai',
-    contextLength: 128000,
-    inputCost: 0.0025,
-    outputCost: 0.01
-  },
-  {
-    id: 'gpt-4o-mini',
-    name: 'GPT-4o Mini',
-    provider: 'openai',
-    contextLength: 128000,
-    inputCost: 0.00015,
-    outputCost: 0.0006
-  },
-  {
-    id: 'gpt-4-turbo',
-    name: 'GPT-4 Turbo',
-    provider: 'openai',
-    contextLength: 128000,
-    inputCost: 0.01,
-    outputCost: 0.03
-  },
-  {
-    id: 'gpt-3.5-turbo',
-    name: 'GPT-3.5 Turbo',
-    provider: 'openai',
-    contextLength: 16385,
-    inputCost: 0.0005,
-    outputCost: 0.0015
-  }
-]
+import { openaiVerifiedModels } from '../models/verified-models'
 
 export class OpenAIProvider implements LLMProvider {
   name = 'openai' as const
-  models = openaiModels
+  models = openaiVerifiedModels as Model[]
 
   async validateAPIKey(apiKey: string): Promise<boolean> {
     try {
