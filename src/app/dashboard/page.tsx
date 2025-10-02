@@ -133,18 +133,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* User Metadata (if any) */}
-        {user.user_metadata && Object.keys(user.user_metadata).length > 0 && (
-          <div className="border border-border rounded-lg p-6 space-y-4">
-            <h2 className="text-xl font-semibold">User Metadata</h2>
-            <div className="bg-accent p-4 rounded-md">
-              <pre className="text-xs overflow-x-auto">
-                {JSON.stringify(user.user_metadata, null, 2)}
-              </pre>
-            </div>
-          </div>
-        )}
-
         {/* Actions */}
         <div className="border border-border rounded-lg p-6 space-y-4">
           <h2 className="text-xl font-semibold">Account Actions</h2>
