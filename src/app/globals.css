@@ -5,65 +5,75 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 224 71% 4%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 224 71% 4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 224 71% 4%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 220 70% 50%;
+    --primary-foreground: 210 20% 98%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
+    --secondary: 220 13% 95%;
+    --secondary-foreground: 220 9% 10%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 13% 95%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --accent: 220 13% 95%;
+    --accent-foreground: 220 9% 10%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 20% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220 70% 50%;
 
     --radius: 0.5rem;
     --font-doto: "DOTO", sans-serif;
+    
+    /* Glow effect colors for light mode */
+    --glow-color-1: 199 89% 48%;
+    --glow-color-2: 217 91% 60%;
+    --glow-opacity: 0.3;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 224 71% 4%;
+    --foreground: 210 20% 98%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 224 71% 4%;
+    --card-foreground: 210 20% 98%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 20% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 220 70% 50%;
+    --primary-foreground: 210 20% 98%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 215 28% 17%;
+    --secondary-foreground: 210 20% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 215 28% 17%;
+    --muted-foreground: 217 11% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 215 28% 17%;
+    --accent-foreground: 210 20% 98%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 20% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 220 70% 50%;
+    
+    /* Glow effect colors for dark mode */
+    --glow-color-1: 199 89% 48%;
+    --glow-color-2: 217 91% 60%;
+    --glow-opacity: 0.5;
   }
 
   /* Fixed: Only transition specific properties to avoid flash */
@@ -315,6 +325,40 @@
 }
 
 @layer components {
+  /* Animated Glow Effect for Chat Input */
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 
+        0 0 20px hsla(var(--glow-color-1), var(--glow-opacity)),
+        0 0 40px hsla(var(--glow-color-2), calc(var(--glow-opacity) * 0.7)),
+        0 0 60px hsla(var(--glow-color-1), calc(var(--glow-opacity) * 0.4));
+    }
+    50% {
+      box-shadow: 
+        0 0 30px hsla(var(--glow-color-2), calc(var(--glow-opacity) * 1.2)),
+        0 0 50px hsla(var(--glow-color-1), calc(var(--glow-opacity) * 0.9)),
+        0 0 70px hsla(var(--glow-color-2), calc(var(--glow-opacity) * 0.5));
+    }
+  }
+  
+  @keyframes glow-rotate {
+    0% {
+      filter: hue-rotate(0deg);
+    }
+    100% {
+      filter: hue-rotate(360deg);
+    }
+  }
+  
+  .input-glow {
+    position: relative;
+    animation: glow-pulse 3s ease-in-out infinite;
+  }
+  
+  .input-glow-focus {
+    animation: glow-pulse 2s ease-in-out infinite, glow-rotate 8s linear infinite;
+  }
+
   /* Custom slider styling */
   .slider::-webkit-slider-thumb {
     appearance: none;

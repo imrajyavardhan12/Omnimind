@@ -6,6 +6,7 @@ import './globals.css'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -25,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark h-full overflow-x-hidden overflow-y-hidden" suppressHydrationWarning>
+    <html lang="en" className="h-full overflow-x-hidden overflow-y-hidden" suppressHydrationWarning>
       <body className={`${inter.className} h-full overflow-x-hidden overflow-y-hidden`}>
         <ThemeProvider>
           <AuthProvider>
@@ -49,6 +50,7 @@ export default function RootLayout({
                     </div>
                   </Link>
                   <div className="flex items-center gap-1 sm:gap-2">
+                    <ThemeToggle />
                     <a
                       href="https://github.com/imrajyavardhan12"
                       target="_blank"

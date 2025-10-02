@@ -1,82 +1,42 @@
 'use client'
 
-import { useEffect } from 'react'
-import { Sun, Moon, Monitor } from 'lucide-react'
+import { Moon, Sun } from 'lucide-react'
 import { useThemeStore } from '@/lib/stores/theme'
-import { cn } from '@/lib/utils'
+import { motion } from 'framer-motion'
 
-interface ThemeToggleProps {
-  className?: string
-  showLabel?: boolean
-}
-
-export function ThemeToggle({ className, showLabel = false }: ThemeToggleProps) {
-  const { theme, resolvedTheme, setTheme } = useThemeStore()
-
-  // Initialize theme on mount
-  useEffect(() => {
-    // Set initial theme based on stored preference or system
-    const storedTheme = localStorage.getItem('omnimind-theme')
-    if (storedTheme) {
-      try {
-        const parsed = JSON.parse(storedTheme)
-        setTheme(parsed.state?.theme || 'system')
-      } catch {
-        setTheme('system')
-      }
-    } else {
-      setTheme('system')
-    }
-
-    // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const handleChange = () => {
-      if (useThemeStore.getState().theme === 'system') {
-        setTheme('system') // This will re-resolve the theme
-      }
-    }
-
-    mediaQuery.addEventListener('change', handleChange)
-    return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [setTheme])
-
-  const toggleTheme = () => {
-    if (theme === 'light') {
-      setTheme('dark')
-    } else if (theme === 'dark') {
-      setTheme('system')
-    } else {
-      setTheme('light')
-    }
-  }
-
-  const getIcon = () => {
-    if (theme === 'system') {
-      return <Monitor className="w-4 h-4" />
-    }
-    return resolvedTheme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />
-  }
-
-  const getLabel = () => {
-    if (theme === 'system') return 'System'
-    return resolvedTheme === 'dark' ? 'Dark' : 'Light'
-  }
+export function ThemeToggle() {
+  const { resolvedTheme, toggleTheme } = useThemeStore()
+  const isDark = resolvedTheme === 'dark'
 
   return (
     <button
       onClick={toggleTheme}
-      className={cn(
-        'flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent transition-colors',
-        className
-      )}
-      title={`Current theme: ${getLabel()}. Click to cycle through themes.`}
+      className="relative flex items-center justify-center w-10 h-10 rounded-lg bg-accent hover:bg-accent/80 transition-colors border border-border"
+      aria-label="Toggle theme"
     >
-      {getIcon()}
-      {showLabel && (
-        <span className="text-sm font-medium">
-          {getLabel()}
-        </span>
-      )}
+      <motion.div
+        initial={false}
+        animate={{
+          rotate: isDark ? 0 : 180,
+          scale: isDark ? 1 : 0
+        }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className="absolute"
+      >
+        <Moon className="w-5 h-5 text-foreground" />
+      </motion.div>
+      
+      <motion.div
+        initial={false}
+        animate={{
+          rotate: isDark ? -180 : 0,
+          scale: isDark ? 0 : 1
+        }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className="absolute"
+      >
+        <Sun className="w-5 h-5 text-foreground" />
+      </motion.div>
     </button>
   )
 }

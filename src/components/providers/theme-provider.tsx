@@ -1,26 +1,28 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useThemeStore, type Theme } from '@/lib/stores/theme'
+import { useThemeStore } from '@/lib/stores/theme'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { theme, setTheme } = useThemeStore()
+  const { theme, resolvedTheme, setTheme } = useThemeStore()
 
   useEffect(() => {
-    // Force dark mode only
+    // Initialize theme from store or default to dark
     const initializeTheme = () => {
+      // Let the store's rehydration handle the theme
+      // Just ensure it's applied to the DOM
+      const currentTheme = resolvedTheme || theme || 'dark'
       document.documentElement.classList.remove('light', 'dark')
-      document.documentElement.classList.add('dark')
+      document.documentElement.classList.add(currentTheme)
       
-      // Update store to dark mode
-      setTheme('dark')
-      
-      // Clear any stored theme preference
-      localStorage.setItem('omnimind-theme', JSON.stringify({ state: { theme: 'dark' } }))
+      // If no theme is set, set dark as default
+      if (!theme) {
+        setTheme('dark')
+      }
     }
 
     initializeTheme()
-  }, [setTheme])
+  }, [theme, resolvedTheme, setTheme])
 
   return <>{children}</>
 }
