@@ -4,6 +4,7 @@ import Image from 'next/image'
 import './globals.css'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -26,8 +27,9 @@ export default function RootLayout({
     <html lang="en" className="dark h-full overflow-x-hidden overflow-y-hidden" suppressHydrationWarning>
       <body className={`${inter.className} h-full overflow-x-hidden overflow-y-hidden`}>
         <ThemeProvider>
-          <ErrorBoundary>
-            <div className="h-screen bg-background overflow-x-hidden overflow-y-hidden flex flex-col">
+          <AuthProvider>
+            <ErrorBoundary>
+              <div className="h-screen bg-background overflow-x-hidden overflow-y-hidden flex flex-col">
               <header className="flex-shrink-0 border-b border-border px-3 sm:px-6 py-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 sm:gap-3">
@@ -74,8 +76,9 @@ export default function RootLayout({
               <main className="flex-1 min-h-0 overflow-x-hidden">
                 {children}
               </main>
-            </div>
-          </ErrorBoundary>
+              </div>
+            </ErrorBoundary>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

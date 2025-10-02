@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react'
+import { Settings, ChevronUp, ChevronDown, RotateCcw, LogOut, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '@/contexts/AuthContext'
 import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import { SessionStats } from '@/components/chat/SessionStats'
 import { ExportButton } from '@/components/chat/ExportButton'
@@ -18,9 +19,16 @@ import { useChatStore } from '@/lib/stores/chat'
 
 export default function Home() {
   const [showSettings, setShowSettings] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
   const { selectedModels } = useModelTabsStore()
   const { viewMode, isHeaderVisible, setIsHeaderVisible, toggleHeaderVisibility } = useViewModeStore()
   const { isLoading, getActiveSession, createSession } = useChatStore()
+  const { user, signOut } = useAuth()
+  
+  const handleSignOut = async () => {
+    await signOut()
+    setShowUserMenu(false)
+  }
   
   // Auto-hide header during response generation (compare mode only)
   useEffect(() => {
@@ -86,7 +94,7 @@ export default function Home() {
                 <ViewModeToggle />
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <ExportButton />
                 <button
                   onClick={clearConversation}
@@ -103,6 +111,46 @@ export default function Home() {
                   <Settings className="w-4 h-4" />
                   <span className="hidden sm:inline">Settings</span>
                 </button>
+                
+                {/* User Menu */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent"
+                    title={user?.email || 'User'}
+                  >
+                    <User className="w-4 h-4" />
+                    <span className="hidden md:inline max-w-[150px] truncate">{user?.email}</span>
+                  </button>
+                  
+                  {showUserMenu && (
+                    <div className="absolute right-0 mt-2 w-64 bg-background border border-border rounded-md shadow-lg z-50">
+                      <div className="p-3 border-b border-border">
+                        <p className="text-sm font-medium">{user?.email}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          User ID: {user?.id?.slice(0, 8)}...
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false)
+                          window.location.href = '/dashboard'
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent"
+                      >
+                        <User className="w-4 h-4" />
+                        Dashboard
+                      </button>
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
