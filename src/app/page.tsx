@@ -28,6 +28,8 @@ export default function Home() {
   const handleSignOut = async () => {
     await signOut()
     setShowUserMenu(false)
+    // Force hard redirect to login page
+    window.location.href = '/auth/login'
   }
   
   // Auto-hide header during response generation (compare mode only)

@@ -10,7 +10,8 @@ export default function DashboardPage() {
 
   const handleSignOut = async () => {
     await signOut()
-    router.push('/auth/login')
+    // Force hard redirect to login page
+    window.location.href = '/auth/login'
   }
 
   if (!user) {
