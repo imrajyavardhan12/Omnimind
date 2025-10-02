@@ -1,18 +1,6 @@
 'use client'
 
 export default function DebugPage() {
-  // Only show in development
-  if (process.env.NODE_ENV === 'production') {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">404</h1>
-          <p className="text-muted-foreground">Page not found</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-2xl mx-auto space-y-6">
