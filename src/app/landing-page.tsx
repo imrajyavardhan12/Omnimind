@@ -239,7 +239,13 @@ export default function LandingPage() {
                 className="p-6 bg-background border border-border rounded-xl hover:border-primary/50 hover:shadow-md transition-all text-center"
               >
                 <div className="flex justify-center mb-3">
-                  <div className={`relative ${provider.name === 'Google' ? 'w-14 h-14 bg-white rounded-lg flex items-center justify-center overflow-hidden' : ''}`}>
+                  <div className={`relative ${
+                    provider.name === 'Google' 
+                      ? 'w-14 h-14 bg-white rounded-lg flex items-center justify-center overflow-hidden' 
+                      : provider.name === 'OpenAI'
+                      ? 'w-14 h-14 bg-white rounded-lg flex items-center justify-center'
+                      : ''
+                  }`}>
                     <Image
                       src={provider.logo}
                       alt={`${provider.name} logo`}
