@@ -43,10 +43,14 @@ export async function updateSession(request: NextRequest) {
 
   // Protected routes logic
   const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
-  const isProtectedPage = request.nextUrl.pathname.startsWith('/app') || 
-                          request.nextUrl.pathname === '/'
+  const isLandingPage = request.nextUrl.pathname === '/'
+  const isDashboardPage = request.nextUrl.pathname.startsWith('/dashboard')
+  const isChatPage = request.nextUrl.pathname.startsWith('/chat')
+  
+  // Protected pages require authentication
+  const isProtectedPage = isChatPage || isDashboardPage
 
-  if (!user && isProtectedPage && !isAuthPage) {
+  if (!user && isProtectedPage) {
     // No user, redirect to login
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
@@ -54,9 +58,9 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && isAuthPage) {
-    // User is logged in but trying to access auth pages, redirect to app
+    // User is logged in but trying to access auth pages, redirect to chat
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/chat'
     return NextResponse.redirect(url)
   }
 

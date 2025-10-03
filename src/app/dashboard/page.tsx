@@ -31,11 +31,11 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/chat')}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to App
+            Back to Chat
           </button>
         </div>
 

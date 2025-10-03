@@ -41,7 +41,7 @@ export default function SignupPage() {
       setSuccess(true)
       setLoading(false)
       // Redirect after 2 seconds
-      setTimeout(() => router.push('/'), 2000)
+      setTimeout(() => router.push('/chat'), 2000)
     }
   }
 
