@@ -13,6 +13,7 @@ import { DynamicChatPanel } from '@/components/chat/DynamicChatPanel'
 import { AnimatedUnifiedInput } from '@/components/chat/AnimatedUnifiedInput'
 import { SingleChatInterface } from '@/components/chat/SingleChatInterface'
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle'
+import { OnboardingModal } from '@/components/OnboardingModal'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useViewModeStore } from '@/lib/stores/viewMode'
 import { useChatStore } from '@/lib/stores/chat'
@@ -20,10 +21,23 @@ import { useChatStore } from '@/lib/stores/chat'
 export default function Home() {
   const [showSettings, setShowSettings] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const { selectedModels } = useModelTabsStore()
   const { viewMode, isHeaderVisible, setIsHeaderVisible, toggleHeaderVisibility } = useViewModeStore()
   const { isLoading, getActiveSession, createSession } = useChatStore()
   const { user, signOut } = useAuth()
+  
+  // Check if user should see onboarding
+  useEffect(() => {
+    const hasSeenOnboarding = localStorage.getItem('omnimind_onboarding_completed')
+    if (!hasSeenOnboarding && user) {
+      // Small delay to let the page settle
+      const timer = setTimeout(() => {
+        setShowOnboarding(true)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [user])
   
   const handleSignOut = async () => {
     await signOut()
@@ -66,6 +80,11 @@ export default function Home() {
 
   return (
     <div className="flex h-full overflow-x-hidden">
+      {/* Onboarding Modal */}
+      {showOnboarding && (
+        <OnboardingModal onClose={() => setShowOnboarding(false)} />
+      )}
+      
       {/* Sidebar - hidden on mobile, visible on desktop */}
       <div className="hidden lg:block">
         <ConversationSidebar />
