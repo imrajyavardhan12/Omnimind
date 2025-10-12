@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Send, Loader2, Square, Folder } from 'lucide-react'
 import { LiquidMetal, PulsingBorder } from "@paper-design/shaders-react"
 import { motion } from "framer-motion"
@@ -300,6 +300,46 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
   const handleRemoveFile = (fileId: string) => {
     setSelectedFiles(prev => prev.filter(f => f.id !== fileId))
   }
+  
+  // Handle auto-message from URL hash - placed after handleSend is defined
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const handleAutoMessage = () => {
+      const autoMessage = sessionStorage.getItem('omnimind_auto_message')
+      if (!autoMessage) return
+      
+      // Check if we have active models
+      const currentActiveModels = useModelTabsStore.getState().selectedModels.filter(sm => 
+        useSettingsStore.getState().providers[sm.provider]?.enabled
+      )
+      
+      if (currentActiveModels.length === 0) {
+        // Don't remove the message yet, wait for models to be ready
+        return
+      }
+      
+      // Remove from storage and set input
+      sessionStorage.removeItem('omnimind_auto_message')
+      setInput(autoMessage)
+      
+      // Small delay to let the input render and state update, then auto-send
+      setTimeout(() => {
+        // Call handleSend directly - the timeout ensures it's available
+        handleSend()
+      }, 400)
+    }
+    
+    window.addEventListener('omnimind:auto-message', handleAutoMessage)
+    // Check on mount after a brief delay to ensure stores are hydrated
+    const timer = setTimeout(handleAutoMessage, 200)
+    
+    return () => {
+      window.removeEventListener('omnimind:auto-message', handleAutoMessage)
+      clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Run once on mount
 
   const getInputPlaceholder = () => {
     if (activeModels.length === 0) {

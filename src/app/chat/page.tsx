@@ -14,6 +14,8 @@ import { AnimatedUnifiedInput } from '@/components/chat/AnimatedUnifiedInput'
 import { SingleChatInterface } from '@/components/chat/SingleChatInterface'
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle'
 import { OnboardingModal } from '@/components/OnboardingModal'
+import { UrlHashMessageHandler } from '@/components/chat/UrlHashMessageHandler'
+import { ModelCommandPalette } from '@/components/chat/ModelCommandPalette'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useViewModeStore } from '@/lib/stores/viewMode'
 import { useChatStore } from '@/lib/stores/chat'
@@ -22,6 +24,7 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showModelPalette, setShowModelPalette] = useState(false)
   const { selectedModels } = useModelTabsStore()
   const { viewMode, isHeaderVisible, setIsHeaderVisible, toggleHeaderVisibility } = useViewModeStore()
   const { isLoading, getActiveSession, createSession } = useChatStore()
@@ -38,6 +41,19 @@ export default function Home() {
       return () => clearTimeout(timer)
     }
   }, [user])
+  
+  // Add keyboard shortcut for model command palette (Cmd/Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowModelPalette(true)
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
   
   const handleSignOut = async () => {
     await signOut()
@@ -80,10 +96,20 @@ export default function Home() {
 
   return (
     <div className="flex h-full overflow-x-hidden">
+      {/* URL Hash Message Handler */}
+      <UrlHashMessageHandler />
+      
       {/* Onboarding Modal */}
       {showOnboarding && (
         <OnboardingModal onClose={() => setShowOnboarding(false)} />
       )}
+      
+      {/* Model Command Palette - Cmd/Ctrl+K */}
+      <ModelCommandPalette 
+        isOpen={showModelPalette}
+        onClose={() => setShowModelPalette(false)}
+        singleMode={viewMode === 'single'}
+      />
       
       {/* Sidebar - hidden on mobile, visible on desktop */}
       <div className="hidden lg:block">
@@ -93,8 +119,9 @@ export default function Home() {
       {/* Main Content */}
       <div className="flex-1 min-w-0 h-full overflow-hidden border-l border-border">
         {showSettings ? (
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
+          <div className="h-full flex flex-col overflow-hidden">
+            {/* Fixed Header */}
+            <div className="flex-shrink-0 flex items-center justify-between p-6 pb-4 border-b border-border bg-background">
               <div>
                 <h2 className="text-xl font-medium">Settings</h2>
               </div>
@@ -105,7 +132,10 @@ export default function Home() {
                 Back to Chat
               </button>
             </div>
-            <SettingsPanel />
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 pt-4">
+              <SettingsPanel />
+            </div>
           </div>
         ) : (
           <div className="flex flex-col h-full overflow-hidden">

@@ -12,8 +12,10 @@ import {
   openaiVerifiedModels, 
   anthropicVerifiedModels, 
   geminiVerifiedModels, 
-  openrouterVerifiedModels 
+  openrouterVerifiedModels,
+  VerifiedModel
 } from '@/lib/models/verified-models'
+import { ModelBadges } from './ModelBadges'
 
 interface ModelSelectionModalProps {
   isOpen: boolean
@@ -140,6 +142,7 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
                       const selected = isModelSelected(model.id)
                       const canAdd = canAddMore() || selected
                       const isFree = model.name.includes('FREE') || model.inputCost === 0
+                      const verifiedModel = model as VerifiedModel
                       
                       return (
                         <div
@@ -155,25 +158,33 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
                           onClick={() => canAdd && !selected && handleAddModel(model)}
                         >
                           <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm mb-1 truncate">
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div className="font-medium text-sm truncate">
                                 {model.name}
-                                {isFree && (
-                                  <span className="ml-2 px-2 py-1 bg-green-500/10 text-green-500 text-xs rounded">
-                                    FREE
-                                  </span>
-                                )}
                               </div>
-                              <div className="text-xs text-muted-foreground mb-2">
+                              
+                              {/* Model Badges */}
+                              {verifiedModel.capabilities && (
+                                <ModelBadges model={verifiedModel} size="sm" />
+                              )}
+                              
+                              <div className="text-xs text-muted-foreground">
                                 {model.contextLength.toLocaleString()} tokens
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {isFree ? (
-                                  <span className="text-green-500">Free to use</span>
+                                  <span className="text-green-600 dark:text-green-400 font-medium">Free to use</span>
                                 ) : (
                                   <span>${model.inputCost}/1K in • ${model.outputCost}/1K out</span>
                                 )}
                               </div>
+                              
+                              {/* Description if available */}
+                              {verifiedModel.description && (
+                                <p className="text-xs text-muted-foreground/80 line-clamp-2 mt-1">
+                                  {verifiedModel.description}
+                                </p>
+                              )}
                             </div>
                             
                             <div className="ml-3 flex-shrink-0">

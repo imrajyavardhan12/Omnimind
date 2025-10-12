@@ -26,7 +26,7 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     setAbortController 
   } = useChatStore()
   
-  const { getApiKey, selectedModels, temperature, maxTokens } = useSettingsStore()
+  const { getApiKey, selectedModels, temperature, maxTokens, messagesInContext, responseLanguage } = useSettingsStore()
 
   const sendMessage = useCallback(async (content: string, attachments?: import('@/lib/types').FileAttachment[]) => {
     const apiKey = getApiKey(provider)
@@ -91,11 +91,45 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     let fullContent = ''
 
     try {
+      // Limit messages in context if configured
+      const allMessages = [...session.messages, {
+        ...userMessage,
+        attachments: attachments
+      }]
+      
+      let messagesToSend = allMessages
+      // Safety check: ensure messagesInContext is a valid number
+      const contextLimit = typeof messagesInContext === 'number' ? messagesInContext : 0
+      if (contextLimit > 0 && allMessages.length > contextLimit) {
+        // Keep the most recent messages
+        messagesToSend = allMessages.slice(-contextLimit)
+        logger.debug(`Limited context to ${contextLimit} messages (from ${allMessages.length})`)
+      }
+      
+      // Add response language instruction if specified
+      // Instead of system message, prepend to first user message for better compatibility
+      const languageInstruction = responseLanguage && typeof responseLanguage === 'string' && responseLanguage.trim() && responseLanguage !== 'none'
+        ? responseLanguage.trim()
+        : null
+      
+      if (languageInstruction && messagesToSend.length > 0) {
+        // Find the last user message and prepend language instruction
+        const lastUserMessageIndex = messagesToSend.length - 1
+        const lastMessage = messagesToSend[lastUserMessageIndex]
+        
+        if (lastMessage && lastMessage.role === 'user') {
+          messagesToSend = [
+            ...messagesToSend.slice(0, lastUserMessageIndex),
+            {
+              ...lastMessage,
+              content: `[Note: Please respond in ${languageInstruction}]\n\n${lastMessage.content}`
+            }
+          ]
+        }
+      }
+
       const chatRequest: ChatRequest = {
-        messages: [...session.messages, {
-          ...userMessage,
-          attachments: attachments
-        }],
+        messages: messagesToSend,
         model: modelIdOverride || selectedModels[provider],
         temperature,
         maxTokens,
@@ -224,6 +258,8 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     selectedModels,
     temperature,
     maxTokens,
+    messagesInContext,
+    responseLanguage,
     activeSessionId,
     getActiveSession,
     addMessage,

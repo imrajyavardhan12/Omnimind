@@ -8,6 +8,8 @@ interface SettingsState {
   selectedModels: Record<ProviderName, string>
   temperature: number
   maxTokens: number
+  messagesInContext: number // 0 means all messages
+  responseLanguage: string // '' means no preference
   
   // Actions
   setApiKey: (provider: ProviderName, apiKey: string) => void
@@ -16,6 +18,8 @@ interface SettingsState {
   setSelectedModel: (provider: ProviderName, modelId: string) => void
   setTemperature: (temperature: number) => void
   setMaxTokens: (maxTokens: number) => void
+  setMessagesInContext: (count: number) => void
+  setResponseLanguage: (language: string) => void
   toggleProvider: (provider: ProviderName, enabled: boolean) => void
 }
 
@@ -78,6 +82,8 @@ export const useSettingsStore = create<SettingsState>()(
       },
       temperature: 0.7,
       maxTokens: 1000,
+      messagesInContext: 0, // 0 = all messages
+      responseLanguage: '', // empty = no preference
 
       setApiKey: (provider: ProviderName, apiKey: string) => {
         const key = `apikey_${provider}`
@@ -137,6 +143,14 @@ export const useSettingsStore = create<SettingsState>()(
         set({ maxTokens })
       },
 
+      setMessagesInContext: (count: number) => {
+        set({ messagesInContext: count })
+      },
+
+      setResponseLanguage: (language: string) => {
+        set({ responseLanguage: language })
+      },
+
       toggleProvider: (provider: ProviderName, enabled: boolean) => {
         set(state => ({
           providers: {
@@ -151,10 +165,10 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'omnimind-settings',
-      version: 1,
+      version: 2, // Increased version for new fields
       migrate: (persistedState: any, version: number) => {
-        if (version === 0) {
-          // Migrate from old version - ensure all providers exist
+        if (version === 0 || version === 1) {
+          // Migrate from old version - ensure all providers exist and new fields are initialized
           return {
             ...persistedState,
             providers: initializeProviders(),
@@ -164,7 +178,10 @@ export const useSettingsStore = create<SettingsState>()(
               gemini: 'gemini-1.5-pro',
               openrouter: 'openai/gpt-4',
               ...persistedState.selectedModels
-            }
+            },
+            // Ensure new fields are initialized
+            messagesInContext: persistedState.messagesInContext ?? 0,
+            responseLanguage: persistedState.responseLanguage ?? ''
           }
         }
         return persistedState
@@ -183,6 +200,8 @@ export const useSettingsStore = create<SettingsState>()(
         selectedModels: state.selectedModels,
         temperature: state.temperature,
         maxTokens: state.maxTokens,
+        messagesInContext: state.messagesInContext,
+        responseLanguage: state.responseLanguage,
         providers: Object.fromEntries(
           Object.entries(state.providers).map(([key, provider]) => [
             key,

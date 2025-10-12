@@ -5,6 +5,7 @@ import { Settings } from 'lucide-react'
 import { ProviderName } from '@/lib/types'
 import { ApiKeyManager } from './ApiKeyManager'
 import { EnhancementSettings } from './EnhancementSettings'
+import { ChatSettings } from './ChatSettings'
 
 interface SettingsPanelProps {
   className?: string
@@ -50,6 +51,11 @@ export function SettingsPanel({ className }: SettingsPanelProps) {
       </div>
       
       <div className="space-y-8">
+        <div>
+          <h3 className="text-lg font-medium mb-4">Chat Settings</h3>
+          <ChatSettings />
+        </div>
+
         <div>
           <h3 className="text-lg font-medium mb-4">API Configuration</h3>
           <div className="space-y-4">

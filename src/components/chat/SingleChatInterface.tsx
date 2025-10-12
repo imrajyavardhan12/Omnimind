@@ -98,6 +98,28 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
       setIsHeaderVisible(false)
     }
   }, [isStreaming, messages.length, setIsHeaderVisible])
+  
+  // Handle auto-message from URL hash
+  useEffect(() => {
+    const handleAutoMessage = () => {
+      const autoMessage = sessionStorage.getItem('omnimind_auto_message')
+      if (autoMessage && selectedSingleModel) {
+        sessionStorage.removeItem('omnimind_auto_message')
+        setInput(autoMessage)
+        // Small delay to let the input render
+        setTimeout(() => {
+          handleSend()
+        }, 100)
+      }
+    }
+    
+    window.addEventListener('omnimind:auto-message', handleAutoMessage)
+    // Also check on mount
+    handleAutoMessage()
+    
+    return () => window.removeEventListener('omnimind:auto-message', handleAutoMessage)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSingleModel])
 
   // Use the shared toggle function from the store
   const toggleHeader = toggleHeaderVisibility
