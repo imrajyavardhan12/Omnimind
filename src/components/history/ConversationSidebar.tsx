@@ -224,11 +224,10 @@ export function ConversationSidebar({ className }: ConversationSidebarProps) {
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (confirm('Delete this conversation?')) {
-                            deleteSession(session.id)
-                          }
+                          deleteSession(session.id)
                         }}
                         className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-opacity ml-2 flex-shrink-0"
+                        title="Delete conversation"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
