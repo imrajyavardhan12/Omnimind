@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ThemeProvider } from '@/components/providers/theme-provider'
@@ -10,7 +10,18 @@ import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 export function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
   const isLandingPage = pathname === '/'
+  
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    // Force navigation to /chat, which will reset any settings/modal states
+    router.push('/chat')
+    // Small delay to ensure navigation completes, then refresh
+    setTimeout(() => {
+      router.refresh()
+    }, 50)
+  }
 
   return (
     <ThemeProvider>
@@ -20,7 +31,11 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
             {!isLandingPage && (
               <header className="flex-shrink-0 border-b border-border px-3 sm:px-6 py-3">
                 <div className="flex items-center justify-between">
-                  <Link href="/chat" className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+                  <Link 
+                    href="/chat" 
+                    onClick={handleLogoClick}
+                    className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+                  >
                     <Image
                       src="/logos/icons8-mind-100.png"
                       alt="OmniMind Logo"

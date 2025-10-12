@@ -19,7 +19,6 @@ import { ModelCommandPalette } from '@/components/chat/ModelCommandPalette'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useViewModeStore } from '@/lib/stores/viewMode'
 import { useChatStore } from '@/lib/stores/chat'
-import { cn } from '@/lib/utils'
 
 export default function Home() {
   const [showSettings, setShowSettings] = useState(false)
@@ -157,12 +156,8 @@ export default function Home() {
                   <span className="hidden sm:inline">Clear</span>
                 </button>
                 <button
-                  onClick={() => setShowSettings(!showSettings)}
-                  className={cn(
-                    "flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent transition-colors",
-                    showSettings && "bg-accent"
-                  )}
-                  title={showSettings ? "Back to chat" : "Settings"}
+                  onClick={() => setShowSettings(true)}
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent"
                 >
                   <Settings className="w-4 h-4" />
                   <span className="hidden sm:inline">Settings</span>
