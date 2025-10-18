@@ -53,7 +53,10 @@ Please respond with ONLY the improved prompt, no explanations or additional text
       : availableProviders[0]
     
     const apiKey = getApiKey(provider as any)
-    if (!apiKey) {
+    const providerConfig = providers[provider as keyof typeof providers]
+    
+    // For free tier providers (like google-ai-studio), API key is handled server-side
+    if (!apiKey && !providerConfig?.isFree) {
       return {
         enhancedPrompt: originalPrompt,
         provider,
@@ -74,7 +77,8 @@ Please respond with ONLY the improved prompt, no explanations or additional text
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          [`x-api-key-${provider}`]: apiKey
+          // Only send API key header if we have one (free tier providers don't need it)
+          ...(apiKey ? { [`x-api-key-${provider}`]: apiKey } : {})
         },
         body: JSON.stringify({
           messages: [{
@@ -121,6 +125,7 @@ Please respond with ONLY the improved prompt, no explanations or additional text
       'openai': 'gpt-4o-mini',
       'anthropic': 'claude-3-haiku-20240307',
       'gemini': 'gemini-1.5-flash',
+      'google-ai-studio': 'gemini-2.0-flash', // Use the latest free tier model
       'openrouter': 'anthropic/claude-3-haiku'
     }
     

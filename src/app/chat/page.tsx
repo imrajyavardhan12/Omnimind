@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+
+// Force dynamic rendering for this page (uses client-side auth and state)
+export const dynamic = 'force-dynamic'
 import { Settings, ChevronUp, ChevronDown, RotateCcw, LogOut, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/contexts/AuthContext'
@@ -53,6 +56,16 @@ export default function Home() {
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+  
+  // Listen for logo click to close settings
+  useEffect(() => {
+    const handleCloseSettings = () => {
+      setShowSettings(false)
+    }
+    
+    window.addEventListener('omnimind:close-settings', handleCloseSettings)
+    return () => window.removeEventListener('omnimind:close-settings', handleCloseSettings)
   }, [])
   
   const handleSignOut = async () => {

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { OpenAIProvider } from '@/lib/providers/openai'
 import { AnthropicProvider } from '@/lib/providers/anthropic'
 import { GeminiProvider } from '@/lib/providers/gemini'
+import { GoogleAIStudioProvider } from '@/lib/providers/google-ai-studio'
 import { OpenRouterProvider } from '@/lib/providers/openrouter'
 import { ChatRequest, ProviderName } from '@/lib/types'
 import { logger } from '@/lib/utils/logger'
@@ -11,6 +12,7 @@ const providers = {
   openai: new OpenAIProvider(),
   anthropic: new AnthropicProvider(),
   gemini: new GeminiProvider(),
+  'google-ai-studio': new GoogleAIStudioProvider(),
   openrouter: new OpenRouterProvider()
 }
 
@@ -30,7 +32,7 @@ const chatRequestSchema = z.object({
       data: z.string()
     })).optional()
   })),
-  provider: z.enum(['openai', 'anthropic', 'gemini', 'openrouter']),
+  provider: z.enum(['openai', 'anthropic', 'gemini', 'openrouter', 'google-ai-studio']),
   model: z.string(),
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().min(1).max(4000).optional(),
@@ -42,8 +44,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { messages, provider, model, temperature, maxTokens, stream } = chatRequestSchema.parse(body)
     
-    // Get API key from headers
-    const apiKey = request.headers.get(`x-api-key-${provider}`)
+    // Get API key from headers or use server-side key for free tier
+    let apiKey = request.headers.get(`x-api-key-${provider}`)
+    
+    // For Google AI Studio, use server-side API key if user hasn't provided their own
+    if (provider === 'google-ai-studio' && !apiKey) {
+      apiKey = process.env.GOOGLE_AI_STUDIO_API_KEY || null
+      logger.debug('Using server-side Google AI Studio API key (free tier)')
+    }
+    
     if (!apiKey) {
       return NextResponse.json(
         { error: `API key required for ${provider}` },

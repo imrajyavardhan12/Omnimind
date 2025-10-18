@@ -1,6 +1,6 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ThemeProvider } from '@/components/providers/theme-provider'
@@ -10,17 +10,12 @@ import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 export function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const router = useRouter()
   const isLandingPage = pathname === '/'
   
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    // Force navigation to /chat, which will reset any settings/modal states
-    router.push('/chat')
-    // Small delay to ensure navigation completes, then refresh
-    setTimeout(() => {
-      router.refresh()
-    }, 50)
+    // Emit custom event that the chat page will listen to
+    window.dispatchEvent(new CustomEvent('omnimind:close-settings'))
   }
 
   return (

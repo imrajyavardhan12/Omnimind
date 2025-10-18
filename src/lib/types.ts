@@ -67,9 +67,10 @@ export interface ProviderConfig {
   baseUrl?: string
   models: Model[]
   enabled: boolean
+  isFree?: boolean // Free tier provided by the app (no user API key needed)
 }
 
-export type ProviderName = 'openai' | 'anthropic' | 'gemini' | 'openrouter'
+export type ProviderName = 'openai' | 'anthropic' | 'gemini' | 'openrouter' | 'google-ai-studio'
 
 export interface LLMProvider {
   name: ProviderName

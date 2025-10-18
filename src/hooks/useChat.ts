@@ -26,11 +26,15 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     setAbortController 
   } = useChatStore()
   
-  const { getApiKey, selectedModels, temperature, maxTokens, messagesInContext, responseLanguage } = useSettingsStore()
+  const { getApiKey, selectedModels, temperature, maxTokens, messagesInContext, responseLanguage, providers } = useSettingsStore()
 
   const sendMessage = useCallback(async (content: string, attachments?: import('@/lib/types').FileAttachment[]) => {
     const apiKey = getApiKey(provider)
-    if (!apiKey) {
+    const providerConfig = providers[provider]
+    
+    // For free tier providers (like google-ai-studio), API key is handled server-side
+    // So we allow empty API key and let the backend use its server key
+    if (!apiKey && !providerConfig?.isFree) {
       throw new Error(`No API key configured for ${provider}`)
     }
 
@@ -141,7 +145,8 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
         signal: abortController.signal,
         headers: {
           'Content-Type': 'application/json',
-          [`x-api-key-${provider}`]: apiKey
+          // Only send API key header if we have one (free tier providers don't need it)
+          ...(apiKey ? { [`x-api-key-${provider}`]: apiKey } : {})
         },
         body: JSON.stringify({
           ...chatRequest,
@@ -255,6 +260,7 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
   }, [
     provider,
     getApiKey,
+    providers,
     selectedModels,
     temperature,
     maxTokens,

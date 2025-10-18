@@ -11,7 +11,7 @@ interface SettingsPanelProps {
   className?: string
 }
 
-const providers: ProviderName[] = ['openai', 'anthropic', 'gemini', 'openrouter']
+const providers: ProviderName[] = ['google-ai-studio', 'openai', 'anthropic', 'gemini', 'openrouter']
 
 export function SettingsPanel({ className }: SettingsPanelProps) {
   const [showDevSettings, setShowDevSettings] = useState(false)

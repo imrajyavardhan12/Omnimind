@@ -36,6 +36,7 @@ export const useChatStore = create<ChatState>()(
     openai: true,
     anthropic: true,
     gemini: true,
+    'google-ai-studio': true,
     openrouter: true
   },
   abortControllers: new Map(),
@@ -58,6 +59,7 @@ export const useChatStore = create<ChatState>()(
         openai: true,
         anthropic: true,
         gemini: true,
+        'google-ai-studio': true,
         openrouter: true
       }
     }))
@@ -142,6 +144,7 @@ export const useChatStore = create<ChatState>()(
         openai: true,
         anthropic: true,
         gemini: true,
+        'google-ai-studio': true,
         openrouter: true
       }
     })
@@ -221,7 +224,10 @@ export const useChatStore = create<ChatState>()(
           }))
         })),
         activeSessionId: state.activeSessionId,
-        visibleProviders: state.visibleProviders
+        visibleProviders: {
+          ...state.visibleProviders,
+          'google-ai-studio': state.visibleProviders['google-ai-studio'] ?? true
+        }
       })
     }
   )

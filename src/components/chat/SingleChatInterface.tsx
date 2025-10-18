@@ -44,7 +44,8 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
   // Get available models from enabled providers
   const availableModels = getAllAvailableModels().filter(model => {
     const provider = providers[model.provider as keyof typeof providers]
-    return provider?.enabled && getApiKey(model.provider as any)
+    // Include if provider is enabled AND (has API key OR is free tier)
+    return provider?.enabled && (getApiKey(model.provider as any) || provider.isFree)
   })
 
   // Auto-select most used model on first load

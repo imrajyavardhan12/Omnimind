@@ -42,6 +42,13 @@ const defaultProviders: Record<ProviderName, ProviderConfig> = {
     models: [],
     enabled: false
   },
+  'google-ai-studio': {
+    name: 'Google AI Studio',
+    apiKey: '',
+    models: [],
+    enabled: true, // Enabled by default - free tier
+    isFree: true
+  },
   openrouter: {
     name: 'OpenRouter',
     apiKey: '',
@@ -57,6 +64,12 @@ const initializeProviders = (): Record<ProviderName, ProviderConfig> => {
   // Check which providers have stored API keys
   Object.keys(providers).forEach((providerKey) => {
     const provider = providerKey as ProviderName
+    
+    // Skip Google AI Studio - it's free tier, doesn't need user API key
+    if (provider === 'google-ai-studio') {
+      return
+    }
+    
     const key = `apikey_${provider}`
     const hasKey = !!secureRetrieve(key)
     
@@ -78,6 +91,7 @@ export const useSettingsStore = create<SettingsState>()(
         openai: 'gpt-4',
         anthropic: 'claude-3-5-sonnet-20241022',
         gemini: 'gemini-1.5-pro',
+        'google-ai-studio': 'gemini-2.0-flash',
         openrouter: 'openai/gpt-4'
       },
       temperature: 0.7,
@@ -165,9 +179,9 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'omnimind-settings',
-      version: 2, // Increased version for new fields
+      version: 3, // Increased version for google-ai-studio provider
       migrate: (persistedState: any, version: number) => {
-        if (version === 0 || version === 1) {
+        if (version === 0 || version === 1 || version === 2) {
           // Migrate from old version - ensure all providers exist and new fields are initialized
           return {
             ...persistedState,
@@ -176,6 +190,7 @@ export const useSettingsStore = create<SettingsState>()(
               openai: 'gpt-4',
               anthropic: 'claude-3-5-sonnet-20241022',
               gemini: 'gemini-1.5-pro',
+              'google-ai-studio': 'gemini-2.0-flash',
               openrouter: 'openai/gpt-4',
               ...persistedState.selectedModels
             },

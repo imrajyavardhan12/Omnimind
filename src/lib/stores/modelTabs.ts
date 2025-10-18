@@ -6,7 +6,8 @@ import { Model, ProviderName } from '../types'
 import { 
   openaiVerifiedModels, 
   anthropicVerifiedModels, 
-  geminiVerifiedModels, 
+  geminiVerifiedModels,
+  googleAIStudioVerifiedModels,
   openrouterVerifiedModels 
 } from '../models/verified-models'
 
@@ -44,6 +45,7 @@ const allModels = [
   ...openaiVerifiedModels,
   ...anthropicVerifiedModels, 
   ...geminiVerifiedModels,
+  ...googleAIStudioVerifiedModels,
   ...openrouterVerifiedModels
 ]
 

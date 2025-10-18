@@ -698,26 +698,38 @@ export const openrouterVerifiedModels: VerifiedModel[] = [
 ]
 
 // ========================================
+// Google AI Studio Models (Same as Gemini - Free Tier)
+// ========================================
+// Google AI Studio uses the exact same API as Gemini
+// We create a separate provider entry for better UX (showing free tier)
+export const googleAIStudioVerifiedModels: VerifiedModel[] = geminiVerifiedModels.map(model => ({
+  ...model,
+  provider: 'google-ai-studio',
+  tags: [...model.tags, 'free-tier']
+}))
+
+// ========================================
 // Export all verified models
 // ========================================
 export const verifiedModels = {
   openai: openaiVerifiedModels,
   anthropic: anthropicVerifiedModels,
   gemini: geminiVerifiedModels,
+  'google-ai-studio': googleAIStudioVerifiedModels,
   openrouter: openrouterVerifiedModels
 }
 
 // Helper to get models by provider
-export function getVerifiedModels(provider: 'openai' | 'anthropic' | 'gemini' | 'openrouter'): VerifiedModel[] {
+export function getVerifiedModels(provider: 'openai' | 'anthropic' | 'gemini' | 'openrouter' | 'google-ai-studio'): VerifiedModel[] {
   return verifiedModels[provider] || []
 }
 
 // Helper to get recommended models only
-export function getRecommendedModels(provider: 'openai' | 'anthropic' | 'gemini' | 'openrouter'): VerifiedModel[] {
+export function getRecommendedModels(provider: 'openai' | 'anthropic' | 'gemini' | 'openrouter' | 'google-ai-studio'): VerifiedModel[] {
   return verifiedModels[provider].filter(m => m.recommended === true)
 }
 
 // Helper to get model by ID
-export function getModelById(provider: 'openai' | 'anthropic' | 'gemini' | 'openrouter', modelId: string): VerifiedModel | undefined {
+export function getModelById(provider: 'openai' | 'anthropic' | 'gemini' | 'openrouter' | 'google-ai-studio', modelId: string): VerifiedModel | undefined {
   return verifiedModels[provider].find(m => m.id === modelId)
 }

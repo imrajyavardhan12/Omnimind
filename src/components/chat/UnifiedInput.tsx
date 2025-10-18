@@ -27,6 +27,7 @@ export function UnifiedInput({ className }: UnifiedInputProps) {
     openai: useChat({ provider: 'openai', skipAddingUserMessage: true }),
     anthropic: useChat({ provider: 'anthropic', skipAddingUserMessage: true }),
     gemini: useChat({ provider: 'gemini', skipAddingUserMessage: true }),
+    'google-ai-studio': useChat({ provider: 'google-ai-studio', skipAddingUserMessage: true }),
     openrouter: useChat({ provider: 'openrouter', skipAddingUserMessage: true })
   }
 

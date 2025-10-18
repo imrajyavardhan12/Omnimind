@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, ExternalLink, Key, CheckCircle } from 'lucide-react'
+import { X, ExternalLink, Key, CheckCircle, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 
@@ -13,6 +13,19 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
   const [currentStep, setCurrentStep] = useState(0)
 
   const providers = [
+    {
+      name: 'Google AI Studio',
+      logo: '/logos/gemini.png',
+      description: '✨ FREE - Start chatting immediately with Gemini models',
+      apiUrl: null,
+      isFree: true,
+      steps: [
+        '🎉 Already enabled for you!',
+        'No API key needed',
+        'Just start chatting',
+        'Powered by Google AI Studio free tier'
+      ]
+    },
     {
       name: 'OpenAI',
       logo: '/logos/gpt-icon.png',
@@ -101,16 +114,20 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
               // Welcome Step
               <div className="text-center space-y-6">
                 <div className="flex justify-center">
-                  <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
-                    <Key className="w-10 h-10 text-primary" />
+                  <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                    <Sparkles className="w-10 h-10 text-white" />
                   </div>
                 </div>
 
                 <div>
                   <h2 className="text-3xl font-bold mb-2">Welcome to OmniMind! 🎉</h2>
-                  <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                    Before you start comparing AI models, you&apos;ll need to set up your API keys.
+                  <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-3">
+                    Start chatting <strong className="text-green-600 dark:text-green-400">immediately for FREE</strong> with Google AI Studio, or add your own API keys for more providers.
                   </p>
+                  <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-full font-semibold text-sm">
+                    <Sparkles className="w-4 h-4" />
+                    Google AI Studio is already enabled!
+                  </div>
                 </div>
 
                 <div className="bg-muted/50 rounded-lg p-6 text-left max-w-xl mx-auto space-y-4">
@@ -163,7 +180,11 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
                   {providers.map((provider, index) => (
                     <div
                       key={index}
-                      className="border border-border rounded-lg p-6 hover:border-primary/50 hover:shadow-md transition-all"
+                      className={`border rounded-lg p-6 hover:shadow-md transition-all ${
+                        provider.isFree 
+                          ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20' 
+                          : 'border-border hover:border-primary/50'
+                      }`}
                     >
                       {/* Provider Header */}
                       <div className="flex items-center gap-4 mb-4">
@@ -177,8 +198,16 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-lg">{provider.name}</h3>
-                          <p className="text-sm text-muted-foreground truncate">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-lg">{provider.name}</h3>
+                            {provider.isFree && (
+                              <span className="flex items-center gap-1 text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded-full font-semibold">
+                                <Sparkles className="w-3 h-3" />
+                                FREE
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
                             {provider.description}
                           </p>
                         </div>
@@ -197,15 +226,22 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
                       </div>
 
                       {/* Get API Key Button */}
-                      <a
-                        href={provider.apiUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
-                      >
-                        Get {provider.name} API Key
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
+                      {provider.isFree ? (
+                        <div className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-medium">
+                          <CheckCircle className="w-5 h-5" />
+                          Ready to Use!
+                        </div>
+                      ) : (
+                        <a
+                          href={provider.apiUrl!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                        >
+                          Get {provider.name} API Key
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -213,11 +249,17 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
                 {/* Footer Actions */}
                 <div className="flex flex-col items-center gap-4 pt-6 border-t border-border">
                   <div className="text-center">
+                    <div className="mb-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                      <p className="text-sm font-semibold text-green-700 dark:text-green-300 flex items-center justify-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        You can start chatting right now with Google AI Studio (FREE)!
+                      </p>
+                    </div>
                     <p className="text-sm text-muted-foreground mb-2">
-                      After getting your API keys, go to <strong>Settings</strong> to add them.
+                      To add more providers, go to <strong>Settings</strong> and enter your API keys.
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      💡 Tip: You only need one provider to get started, but multiple providers let you compare responses.
+                      💡 Tip: Multiple providers let you compare responses side-by-side.
                     </p>
                   </div>
                   <button

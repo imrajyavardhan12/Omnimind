@@ -10,7 +10,8 @@ import { cn } from '@/lib/utils'
 import { 
   openaiVerifiedModels, 
   anthropicVerifiedModels, 
-  geminiVerifiedModels, 
+  geminiVerifiedModels,
+  googleAIStudioVerifiedModels,
   openrouterVerifiedModels 
 } from '@/lib/models/verified-models'
 
@@ -23,6 +24,7 @@ const providerModels = {
   openai: openaiVerifiedModels as Model[],
   anthropic: anthropicVerifiedModels as Model[],
   gemini: geminiVerifiedModels as Model[],
+  'google-ai-studio': googleAIStudioVerifiedModels as Model[],
   openrouter: openrouterVerifiedModels as Model[]
 }
 
