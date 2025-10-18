@@ -236,23 +236,24 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
       onMessage?.(finalMessage)
 
     } catch (error) {
-      console.error(`Chat error for ${provider}:`, error)
-      
-      // Check if error is due to abort
-      if (error instanceof Error && error.name === 'AbortError') {
+      // Check if error is due to abort (user stopped the request)
+      if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
+        logger.debug(`Request aborted by user for ${provider}`)
+        // Update message with what we have so far, or a stopped message
         updateMessage(sessionId, assistantMessageId, {
           content: fullContent || 'Response stopped by user'
         })
+        // Don't show error for user-initiated stops
       } else {
-        // Update message with error
+        // Real error - log and show to user
+        console.error(`Chat error for ${provider}:`, error)
         updateMessage(sessionId, assistantMessageId, {
           content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
         })
-        
         onError?.(error instanceof Error ? error : new Error('Unknown error'))
       }
     } finally {
-      // Clean up abort controller and loading state
+      // Always clean up abort controller and loading state
       setAbortController(requestKey, null)
       setLoading(requestKey, false)
       setIsStreaming(false)

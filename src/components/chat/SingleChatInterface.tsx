@@ -93,6 +93,13 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
     scrollToBottom()
   }, [messages, isTyping])
 
+  // Sync isTyping with isStreaming
+  useEffect(() => {
+    if (!isStreaming) {
+      setIsTyping(false)
+    }
+  }, [isStreaming])
+  
   // Auto-hide header during response generation
   useEffect(() => {
     if (isStreaming && messages.length > 0) {
