@@ -95,7 +95,7 @@ export const useSettingsStore = create<SettingsState>()(
         openrouter: 'openai/gpt-4'
       },
       temperature: 0.7,
-      maxTokens: 1000,
+      maxTokens: 2048, // Increased from 1000 - good balance for most responses
       messagesInContext: 0, // 0 = all messages
       responseLanguage: '', // empty = no preference
 
@@ -179,7 +179,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'omnimind-settings',
-      version: 3, // Increased version for google-ai-studio provider
+      version: 4, // Increased version for maxTokens increase
       migrate: (persistedState: any, version: number) => {
         if (version === 0 || version === 1 || version === 2) {
           // Migrate from old version - ensure all providers exist and new fields are initialized
@@ -196,7 +196,15 @@ export const useSettingsStore = create<SettingsState>()(
             },
             // Ensure new fields are initialized
             messagesInContext: persistedState.messagesInContext ?? 0,
-            responseLanguage: persistedState.responseLanguage ?? ''
+            responseLanguage: persistedState.responseLanguage ?? '',
+            maxTokens: persistedState.maxTokens === 1000 ? 2048 : persistedState.maxTokens // Upgrade old default
+          }
+        }
+        if (version === 3) {
+          // Migrate from version 3 - upgrade maxTokens if still at old default
+          return {
+            ...persistedState,
+            maxTokens: persistedState.maxTokens === 1000 ? 2048 : persistedState.maxTokens
           }
         }
         return persistedState

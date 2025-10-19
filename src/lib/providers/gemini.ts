@@ -48,15 +48,37 @@ export class GeminiProvider implements LLMProvider {
     
     if (!data.candidates || data.candidates.length === 0) {
       console.error('No candidates in Gemini response:', data)
+      // Check if there's a safety reason for blocking
+      if (data.promptFeedback?.blockReason) {
+        throw new Error(`Gemini blocked the request: ${data.promptFeedback.blockReason}`)
+      }
       throw new Error('No response from Gemini API')
     }
 
     const candidate = data.candidates[0]
+    
+    // Check if content was blocked due to safety filters
+    if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'RECITATION') {
+      logger.warn(`Gemini blocked content due to: ${candidate.finishReason}`)
+      const safetyRatings = candidate.safetyRatings?.map((r: any) => `${r.category}: ${r.probability}`).join(', ')
+      throw new Error(`Content filtered by Gemini: ${candidate.finishReason}${safetyRatings ? ` (${safetyRatings})` : ''}`)
+    }
+    
     const textPart = candidate.content?.parts?.find((part: any) => part.text)
-    const content = textPart?.text || ''
+    let content = textPart?.text || ''
+    
+    // Check if response was truncated due to token limit
+    if (candidate.finishReason === 'MAX_TOKENS' && content) {
+      logger.warn('Gemini response truncated due to MAX_TOKENS limit')
+      content += '\n\n⚠️ *Response was truncated due to token limit. Try increasing max tokens in Settings.*'
+    }
     
     if (!content) {
-      console.warn('No text content found in Gemini response')
+      logger.warn('No text content found in Gemini response', { 
+        finishReason: candidate.finishReason,
+        hasContent: !!candidate.content,
+        parts: candidate.content?.parts?.length || 0
+      })
     }
     
     // Estimate tokens since Gemini doesn't always provide usage info
@@ -84,13 +106,35 @@ export class GeminiProvider implements LLMProvider {
     try {
       const response = await this.complete(request, apiKey, signal)
       
-      // Simulate streaming by yielding the complete content
-      if (response.content) {
+      // Always yield content chunk, even if empty (to prevent showing empty messages with tokens)
+      // Check for undefined/null instead of falsy to handle empty strings correctly
+      if (response.content !== undefined && response.content !== null) {
+        // Check if the content is actually empty (not just whitespace)
+        const hasContent = response.content.trim().length > 0
+        
+        if (hasContent) {
+          yield {
+            id: response.id,
+            content: response.content,
+            done: false,
+            tokens: response.tokens?.total
+          }
+        } else {
+          // Empty content - likely API issue or filtering
+          logger.warn('Gemini returned empty content', { finishReason: response.finishReason })
+          yield {
+            id: response.id,
+            content: `⚠️ *Empty response from Gemini. This may be due to content filtering or API issues. Try rephrasing your prompt.*`,
+            done: false
+          }
+        }
+      } else {
+        // If no content, yield an error message
+        logger.warn('Gemini returned no content - possible content filtering or API error')
         yield {
           id: response.id,
-          content: response.content,
-          done: false,
-          tokens: response.tokens?.total
+          content: '⚠️ *No response from Gemini. This may be due to content filtering or API issues.*',
+          done: false
         }
       }
       

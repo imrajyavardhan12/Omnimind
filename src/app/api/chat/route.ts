@@ -35,7 +35,7 @@ const chatRequestSchema = z.object({
   provider: z.enum(['openai', 'anthropic', 'gemini', 'openrouter', 'google-ai-studio']),
   model: z.string(),
   temperature: z.number().min(0).max(2).optional(),
-  maxTokens: z.number().min(1).max(4000).optional(),
+  maxTokens: z.number().min(1).max(8192).optional(), // Increased to support longer responses
   stream: z.boolean().optional()
 })
 

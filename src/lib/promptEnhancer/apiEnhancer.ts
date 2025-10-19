@@ -89,7 +89,7 @@ Please respond with ONLY the improved prompt, no explanations or additional text
           }],
           model,
           temperature: 0.3, // Low temperature for consistent improvements
-          maxTokens: 500,
+          maxTokens: 500, // Keep concise - optimizer should improve, not make prompts overly long
           stream: false,
           provider
         })
