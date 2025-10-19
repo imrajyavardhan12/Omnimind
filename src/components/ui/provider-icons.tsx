@@ -58,6 +58,8 @@ export function getProviderIcon(provider: string, className?: string) {
       return <AnthropicIcon className={className} />
     case 'gemini':
       return <GeminiIcon className={className} />
+    case 'google-ai-studio':
+      return <GeminiIcon className={className} /> // Use Gemini logo for Google AI Studio
     case 'openrouter':
       return <OpenRouterIcon className={className} />
     default:

@@ -77,7 +77,7 @@ export class OpenRouterProvider implements LLMProvider {
           }
         }),
         temperature: request.temperature || 0.7,
-        max_tokens: request.maxTokens || 1000,
+        max_tokens: request.maxTokens || 2048,
         stream: false
       })
     })
@@ -183,7 +183,7 @@ export class OpenRouterProvider implements LLMProvider {
           }
         }),
         temperature: request.temperature || 0.7,
-        max_tokens: request.maxTokens || 1000,
+        max_tokens: request.maxTokens || 2048,
         stream: true
       })
     })

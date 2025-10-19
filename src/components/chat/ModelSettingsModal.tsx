@@ -16,7 +16,7 @@ export function ModelSettingsModal({ selectedModel, className }: ModelSettingsMo
   const { updateModelSettings, defaultSettings } = useModelTabsStore()
   
   const safeDefaultSettings = useMemo(() => 
-    defaultSettings || { temperature: 0.7, maxTokens: 1000, systemPrompt: '' }, 
+    defaultSettings || { temperature: 0.7, maxTokens: 2048, systemPrompt: '' }, 
     [defaultSettings]
   )
   
@@ -128,17 +128,17 @@ export function ModelSettingsModal({ selectedModel, className }: ModelSettingsMo
 
               <div className="space-y-3">
                 <label className="text-sm font-medium text-foreground">
-                  Max Tokens ({(localSettings?.maxTokens ?? 1000).toLocaleString()})
+                  Max Tokens ({(localSettings?.maxTokens ?? 2048).toLocaleString()})
                 </label>
                 <div className="px-1">
                   <input
                     type="range"
                     min="1"
-                    max="4000"
-                    step="50"
-                    value={localSettings?.maxTokens ?? 1000}
+                    max="8192"
+                    step="100"
+                    value={localSettings?.maxTokens ?? 2048}
                     onChange={(e) => {
-                      const value = Math.max(1, Math.min(4000, parseInt(e.target.value)))
+                      const value = Math.max(1, Math.min(8192, parseInt(e.target.value)))
                       setLocalSettings(prev => ({ ...prev, maxTokens: value }))
                     }}
                     className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer slider"
@@ -146,7 +146,7 @@ export function ModelSettingsModal({ selectedModel, className }: ModelSettingsMo
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground px-1">
                   <span>1</span>
-                  <span>4000</span>
+                  <span>8,192</span>
                 </div>
               </div>
 

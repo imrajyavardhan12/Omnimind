@@ -54,7 +54,7 @@ export const useModelTabsStore = create<ModelTabsState>()(
     (set, get) => ({
       defaultSettings: {
         temperature: 0.7,
-        maxTokens: 1000,
+        maxTokens: 2048, // Aligned with global settings default
         systemPrompt: ''
       },
       

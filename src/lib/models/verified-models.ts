@@ -427,7 +427,7 @@ export const geminiVerifiedModels: VerifiedModel[] = [
     supportedFileTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'audio/*', 'video/*']
   },
   {
-    id: 'gemini-1.5-pro-latest',
+    id: 'gemini-1.5-pro',
     name: 'Gemini 1.5 Pro',
     provider: 'gemini',
     description: 'Stable model with 2M token context, excellent for long documents',

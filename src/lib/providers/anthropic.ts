@@ -40,7 +40,7 @@ export class AnthropicProvider implements LLMProvider {
       },
       body: JSON.stringify({
         model: request.model,
-        max_tokens: request.maxTokens || 1000,
+        max_tokens: request.maxTokens || 2048,
         temperature: request.temperature || 0.7,
         messages: request.messages
           .filter(msg => msg.role !== 'system')
@@ -121,7 +121,7 @@ export class AnthropicProvider implements LLMProvider {
       },
       body: JSON.stringify({
         model: request.model,
-        max_tokens: request.maxTokens || 1000,
+        max_tokens: request.maxTokens || 2048,
         temperature: request.temperature || 0.7,
         messages: request.messages
           .filter(msg => msg.role !== 'system')
