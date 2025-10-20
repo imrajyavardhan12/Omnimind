@@ -18,15 +18,17 @@ export function MessageAttachments({ attachments, className }: MessageAttachment
     <div className={`space-y-2 ${className}`}>
       {attachments.map((file) => {
         const category = getFileCategory(file.type)
+        const hasData = file.data && file.url
+        const wasCleared = file._dataPersisted === false || (!hasData && file._dataPersisted === undefined)
         
         return (
           <div key={file.id} className="border rounded-lg p-3 bg-muted">
             {category === 'images' ? (
               <div className="space-y-2">
-                {file.url ? (
+                {hasData ? (
                   <div className="relative w-full max-w-sm">
                     <Image
-                      src={file.url}
+                      src={file.url!}
                       alt={file.name}
                       width={300}
                       height={200}
@@ -34,8 +36,13 @@ export function MessageAttachments({ attachments, className }: MessageAttachment
                     />
                   </div>
                 ) : (
-                  <div className="relative w-full max-w-sm p-4 border-2 border-dashed border-border rounded bg-muted/20 flex items-center justify-center text-muted-foreground">
-                    <span className="text-sm">Image preview unavailable</span>
+                  <div className="relative w-full max-w-sm p-4 border-2 border-dashed border-border rounded bg-amber-500/10 flex flex-col items-center justify-center text-amber-600 dark:text-amber-400">
+                    <span className="text-sm font-medium">📎 Image data not loaded</span>
+                    {wasCleared && (
+                      <span className="text-xs mt-1 text-center">
+                        Attachment was cleared to save space. Re-upload if needed.
+                      </span>
+                    )}
                   </div>
                 )}
                 <div className="text-xs text-muted-foreground">
@@ -51,6 +58,11 @@ export function MessageAttachments({ attachments, className }: MessageAttachment
                   <div className="text-xs text-muted-foreground">
                     {formatFileSize(file.size)} • {file.type}
                   </div>
+                  {wasCleared && (
+                    <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      ⚠️ File data cleared to save space
+                    </div>
+                  )}
                 </div>
               </div>
             )}

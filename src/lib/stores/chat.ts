@@ -212,17 +212,31 @@ export const useChatStore = create<ChatState>()(
     {
       name: 'omnimind-chat-sessions',
       partialize: (state) => ({
-        sessions: state.sessions.map(session => ({
-          ...session,
-          messages: session.messages.map(message => ({
-            ...message,
-            attachments: message.attachments?.map(att => ({
-              ...att,
-              data: '',
-              url: ''  
-            }))
-          }))
-        })),
+        sessions: state.sessions.map(session => {
+          // Keep full attachment data for the most recent 10 messages to prevent data loss on refresh
+          // For older messages, clear attachment data to save localStorage space
+          const recentMessageCount = 10
+          const totalMessages = session.messages.length
+          
+          return {
+            ...session,
+            messages: session.messages.map((message, index) => {
+              const isRecentMessage = index >= totalMessages - recentMessageCount
+              
+              return {
+                ...message,
+                attachments: message.attachments?.map(att => ({
+                  ...att,
+                  // Keep full data for recent messages, clear for old ones
+                  data: isRecentMessage ? att.data : '',
+                  url: isRecentMessage ? att.url : '',
+                  // Add flag to indicate if data was preserved
+                  _dataPersisted: isRecentMessage
+                }))
+              }
+            })
+          }
+        }),
         activeSessionId: state.activeSessionId,
         visibleProviders: {
           ...state.visibleProviders,

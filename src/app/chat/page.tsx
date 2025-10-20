@@ -94,16 +94,16 @@ export default function Home() {
     createSession() // Creates a new session, effectively clearing the current one
   }
   
-  // Dynamic grid class - responsive for mobile
+  // Dynamic grid class - responsive for mobile with better breakpoints
   const getGridClass = (count: number) => {
-    // Mobile first: 1 column on mobile, then adapt for larger screens
+    // Mobile first: 1 column on mobile, max 2 columns on desktop for better readability
     switch (count) {
       case 1: return 'grid-cols-1'
-      case 2: return 'grid-cols-1 md:grid-cols-2'
-      case 3: return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-      case 4: return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
-      case 5: return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
-      default: return 'grid-cols-1'
+      case 2: return 'grid-cols-1 lg:grid-cols-2'
+      case 3: return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+      case 4: return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-2' // Max 2 cols for better space
+      case 5: return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+      default: return 'grid-cols-1 md:grid-cols-2'
     }
   }
 

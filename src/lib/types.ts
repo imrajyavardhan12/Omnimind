@@ -5,6 +5,7 @@ export interface FileAttachment {
   size: number
   data: string // base64 encoded data
   url?: string // for display purposes
+  _dataPersisted?: boolean // flag indicating if data was preserved during persistence
 }
 
 export interface Message {

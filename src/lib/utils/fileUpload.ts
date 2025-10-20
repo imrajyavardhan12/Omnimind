@@ -8,7 +8,8 @@ export const SUPPORTED_FILE_TYPES = {
 }
 
 export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB per file
-export const MAX_TOTAL_FILE_SIZE = 25 * 1024 * 1024 // 25MB total
+export const MAX_TOTAL_FILE_SIZE = 50 * 1024 * 1024 // 50MB total
+export const MAX_FILES_COUNT = 10 // Maximum 10 files per message
 
 export function isFileTypeSupported(fileType: string): boolean {
   return Object.values(SUPPORTED_FILE_TYPES).flat().includes(fileType)

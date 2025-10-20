@@ -30,13 +30,20 @@ export function FileUpload({
 
     setIsProcessing(true)
     try {
+      // Import constants
+      const { MAX_TOTAL_FILE_SIZE, MAX_FILES_COUNT } = await import('@/lib/utils/fileUpload')
+      
+      // Check file count limit
+      if (selectedFiles.length + files.length > MAX_FILES_COUNT) {
+        throw new Error(`Cannot upload more than ${MAX_FILES_COUNT} files per message. Currently have ${selectedFiles.length} file(s).`)
+      }
+      
       // Check total size limit including already selected files
       const currentTotalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0)
       const newFilesSize = Array.from(files).reduce((sum, f) => sum + f.size, 0)
-      const MAX_TOTAL_SIZE = 25 * 1024 * 1024 // 25MB
       
-      if (currentTotalSize + newFilesSize > MAX_TOTAL_SIZE) {
-        throw new Error(`Total file size would exceed ${(MAX_TOTAL_SIZE / 1024 / 1024).toFixed(0)}MB limit. Currently using ${(currentTotalSize / 1024 / 1024).toFixed(1)}MB`)
+      if (currentTotalSize + newFilesSize > MAX_TOTAL_FILE_SIZE) {
+        throw new Error(`Total file size would exceed ${(MAX_TOTAL_FILE_SIZE / 1024 / 1024).toFixed(0)}MB limit. Currently using ${(currentTotalSize / 1024 / 1024).toFixed(1)}MB`)
       }
 
       const filePromises = Array.from(files).map(processFile)
