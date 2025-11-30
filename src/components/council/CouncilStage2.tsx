@@ -44,7 +44,7 @@ export function CouncilStage2({ rankings, aggregateRankings, isActive, totalMode
       animate={{ opacity: 1, y: 0 }}
       className={cn(
         "rounded-xl border overflow-hidden",
-        isActive ? "border-blue-500/50 bg-blue-500/5" : "border-border bg-background"
+        isActive ? "border-primary/50 bg-primary/5" : "border-border bg-background"
       )}
     >
       {/* Stage Header */}
@@ -53,8 +53,8 @@ export function CouncilStage2({ rankings, aggregateRankings, isActive, totalMode
           <div className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
             allComplete ? "bg-green-500 text-white" : 
-            hasErrors ? "bg-red-500 text-white" :
-            isActive ? "bg-blue-500 text-white" : "bg-muted text-muted-foreground"
+            hasErrors ? "bg-destructive text-destructive-foreground" :
+            isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           )}>
             {allComplete ? <CheckCircle2 className="w-4 h-4" /> : 
              hasErrors ? <AlertCircle className="w-4 h-4" /> : "2"}
@@ -78,7 +78,7 @@ export function CouncilStage2({ rankings, aggregateRankings, isActive, totalMode
           className={cn(
             "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
             activeTab === 'aggregate' 
-              ? "border-blue-500 text-foreground bg-muted/30" 
+              ? "border-primary text-foreground bg-muted/30" 
               : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/20"
           )}
         >
@@ -92,14 +92,14 @@ export function CouncilStage2({ rankings, aggregateRankings, isActive, totalMode
             className={cn(
               "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
               activeTab === index 
-                ? "border-blue-500 text-foreground bg-muted/30" 
+                ? "border-primary text-foreground bg-muted/30" 
                 : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/20"
             )}
           >
             <span>{ranking.reviewerModelName}</span>
             {ranking.isLoading && <Loader2 className="w-3 h-3 animate-spin" />}
             {!ranking.isLoading && !ranking.error && <CheckCircle2 className="w-3 h-3 text-green-500" />}
-            {ranking.error && <AlertCircle className="w-3 h-3 text-red-500" />}
+            {ranking.error && <AlertCircle className="w-3 h-3 text-destructive" />}
           </button>
         ))}
       </div>
@@ -118,7 +118,7 @@ export function CouncilStage2({ rankings, aggregateRankings, isActive, totalMode
               {aggregateRankings.length === 0 ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
                     <p className="text-sm text-muted-foreground">
                       Waiting for peer reviews...
                     </p>
@@ -176,7 +176,7 @@ export function CouncilStage2({ rankings, aggregateRankings, isActive, totalMode
               {rankings[activeTab as number]?.isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
                     <p className="text-sm text-muted-foreground">
                       {rankings[activeTab as number]?.reviewerModelName} is evaluating...
                     </p>
@@ -185,8 +185,8 @@ export function CouncilStage2({ rankings, aggregateRankings, isActive, totalMode
               ) : rankings[activeTab as number]?.error ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="flex flex-col items-center gap-3 text-center">
-                    <AlertCircle className="w-8 h-8 text-red-500" />
-                    <p className="text-sm text-red-500">{rankings[activeTab as number]?.error}</p>
+                    <AlertCircle className="w-8 h-8 text-destructive" />
+                    <p className="text-sm text-destructive">{rankings[activeTab as number]?.error}</p>
                   </div>
                 </div>
               ) : (

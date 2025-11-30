@@ -22,7 +22,7 @@ export function CouncilStage3({ synthesis, isLoading, chairmanModel, isActive }:
       animate={{ opacity: 1, y: 0 }}
       className={cn(
         "rounded-xl border overflow-hidden",
-        isActive ? "border-purple-500/50 bg-purple-500/5" : "border-border bg-background"
+        isActive ? "border-primary/50 bg-primary/5" : "border-border bg-background"
       )}
     >
       {/* Stage Header */}
@@ -31,7 +31,7 @@ export function CouncilStage3({ synthesis, isLoading, chairmanModel, isActive }:
           <div className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
             isComplete ? "bg-green-500 text-white" : 
-            isActive ? "bg-purple-500 text-white" : "bg-muted text-muted-foreground"
+            isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           )}>
             {isComplete ? <CheckCircle2 className="w-4 h-4" /> : "3"}
           </div>
@@ -43,9 +43,9 @@ export function CouncilStage3({ synthesis, isLoading, chairmanModel, isActive }:
           </div>
         </div>
         {chairmanModel && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 rounded-full">
-            <Crown className="w-4 h-4 text-purple-500" />
-            <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full">
+            <Crown className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-primary">
               {chairmanModel.name}
             </span>
           </div>
@@ -69,8 +69,8 @@ export function CouncilStage3({ synthesis, isLoading, chairmanModel, isActive }:
           <div className="flex items-center justify-center py-12">
             <div className="flex flex-col items-center gap-3">
               <div className="relative">
-                <Loader2 className="w-10 h-10 animate-spin text-purple-500" />
-                <Crown className="w-5 h-5 text-purple-500 absolute -top-1 -right-1" />
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                <Crown className="w-5 h-5 text-primary absolute -top-1 -right-1" />
               </div>
               <p className="text-sm text-muted-foreground">
                 Chairman is synthesizing the final answer...
@@ -85,9 +85,9 @@ export function CouncilStage3({ synthesis, isLoading, chairmanModel, isActive }:
           >
             {/* Final Answer Banner */}
             <div className="flex items-center gap-2 mb-4 pb-4 border-b border-border">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 rounded-full">
-                <Sparkles className="w-4 h-4 text-purple-500" />
-                <span className="text-sm font-semibold text-purple-600 dark:text-purple-400">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold text-primary">
                   Council&apos;s Final Answer
                 </span>
               </div>

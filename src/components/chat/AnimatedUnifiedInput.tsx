@@ -488,12 +488,10 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
           </motion.div>
 
           <motion.div
-            className={cn(
-              "relative bg-background border rounded-3xl p-4 shadow-lg shadow-black/10 z-20 max-w-4xl mx-auto transition-all duration-300",
-              isFocused ? "input-glow-focus" : "input-glow"
-            )}
+            className="relative bg-background border rounded-3xl p-4 shadow-lg shadow-black/10 z-20 max-w-4xl mx-auto"
             animate={{
-              borderColor: isFocused ? "hsl(29, 77%, 49%)" : "hsl(214, 13%, 12%)",
+              borderColor: isFocused ? "hsl(29, 77%, 49%)" : "hsl(var(--border))",
+              boxShadow: isFocused ? "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" : "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
             }}
             transition={{
               duration: 0.6,

@@ -39,12 +39,7 @@ export function ViewModeToggle({ className }: ViewModeToggleProps) {
   }
 
   const getModeColor = () => {
-    switch (viewMode) {
-      case 'single': return 'bg-green-500'
-      case 'compare': return 'bg-blue-500'
-      case 'council': return 'bg-purple-500'
-      default: return 'bg-green-500'
-    }
+    return 'bg-orange-500'
   }
 
   return (
@@ -56,21 +51,12 @@ export function ViewModeToggle({ className }: ViewModeToggleProps) {
       >
         {/* Animated background with gradient */}
         <motion.div 
-          className={cn(
-            "absolute inset-1.5 rounded-lg shadow-lg",
-            viewMode === 'council' 
-              ? "bg-gradient-to-r from-purple-500/90 to-indigo-500/90"
-              : "bg-gradient-to-r from-orange-500/90 to-amber-500/90"
-          )}
+          className="absolute inset-1.5 rounded-lg shadow-lg bg-gradient-to-r from-orange-500/90 to-amber-500/90"
           animate={{
             x: getSliderPosition(),
             boxShadow: isHovered 
-              ? viewMode === 'council'
-                ? '0 8px 32px -4px rgba(139, 92, 246, 0.4)'
-                : '0 8px 32px -4px rgba(251, 146, 60, 0.4)' 
-              : viewMode === 'council'
-                ? '0 4px 16px -2px rgba(139, 92, 246, 0.25)'
-                : '0 4px 16px -2px rgba(251, 146, 60, 0.25)'
+              ? '0 8px 32px -4px rgba(251, 146, 60, 0.4)' 
+              : '0 4px 16px -2px rgba(251, 146, 60, 0.25)'
           }}
           transition={{
             type: "spring",

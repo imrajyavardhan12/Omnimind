@@ -115,14 +115,14 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
                 className={cn(
                   "flex items-center gap-2 px-3 py-2 rounded-lg border",
                   chairmanModel?.id === model.id 
-                    ? "bg-purple-500/10 border-purple-500/50" 
+                    ? "bg-primary/10 border-primary/50" 
                     : "bg-muted/30 border-border"
                 )}
               >
                 <div className={cn("w-2 h-2 rounded-full", getProviderColor(model.provider))} />
                 <span className="text-sm font-medium">{model.name}</span>
                 {chairmanModel?.id === model.id && (
-                  <Crown className="w-3 h-3 text-purple-500" />
+                  <Crown className="w-3 h-3 text-primary" />
                 )}
                 <button
                   onClick={() => {
@@ -143,7 +143,7 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
           {councilModels.length < 5 && (
             <button
               onClick={() => setShowModelPicker(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border hover:border-purple-500 hover:bg-purple-500/5 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span className="text-sm">Add Model</span>
@@ -156,7 +156,7 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
       {councilModels.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Crown className="w-4 h-4 text-purple-500" />
+            <Crown className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium">Chairman</span>
             <span className="text-xs text-muted-foreground">
               (synthesizes final answer)
@@ -165,7 +165,7 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
 
           <button
             onClick={() => setShowChairmanPicker(true)}
-            className="flex items-center justify-between w-full max-w-xs px-3 py-2 rounded-lg border border-border hover:border-purple-500 bg-background"
+            className="flex items-center justify-between w-full max-w-xs px-3 py-2 rounded-lg border border-border hover:border-primary bg-background"
           >
             <div className="flex items-center gap-2">
               {chairmanModel ? (
@@ -197,8 +197,8 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+                    <Users className="w-5 h-5 text-primary-foreground" />
                   </div>
                   <div>
                     <h2 className="text-xl font-semibold">Add Council Member</h2>
@@ -227,7 +227,7 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
                     placeholder="Search models..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full pl-10 pr-4 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                     autoFocus
                   />
                 </div>
@@ -259,7 +259,7 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
                           {models.map((model) => (
                             <div
                               key={model.id}
-                              className="p-4 border border-border rounded-lg hover:border-purple-500/50 hover:bg-accent/50 cursor-pointer transition-all"
+                              className="p-4 border border-border rounded-lg hover:border-primary/50 hover:bg-accent/50 cursor-pointer transition-all"
                               onClick={() => handleAddModel(model)}
                             >
                               <div className="flex items-start justify-between">
@@ -272,7 +272,7 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
                                   </div>
                                 </div>
                                 <div className="ml-3 flex-shrink-0">
-                                  <div className="p-1 rounded-full border border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white transition-colors">
+                                  <div className="p-1 rounded-full border border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
                                     <Plus className="w-4 h-4" />
                                   </div>
                                 </div>
@@ -306,8 +306,8 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
-                    <Crown className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+                    <Crown className="w-5 h-5 text-primary-foreground" />
                   </div>
                   <div>
                     <h2 className="text-xl font-semibold">Select Chairman</h2>
@@ -334,8 +334,8 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
                       className={cn(
                         "p-4 border rounded-lg cursor-pointer transition-all",
                         chairmanModel?.id === model.id 
-                          ? "border-purple-500 bg-purple-500/10"
-                          : "border-border hover:border-purple-500/50 hover:bg-accent/50"
+                          ? "border-primary bg-primary/10"
+                          : "border-border hover:border-primary/50 hover:bg-accent/50"
                       )}
                     >
                       <div className="flex items-center justify-between">
@@ -347,7 +347,7 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
                           </div>
                         </div>
                         {chairmanModel?.id === model.id && (
-                          <div className="p-1 rounded-full bg-purple-500 text-white">
+                          <div className="p-1 rounded-full bg-primary text-primary-foreground">
                             <Check className="w-4 h-4" />
                           </div>
                         )}

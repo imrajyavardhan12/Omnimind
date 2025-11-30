@@ -35,9 +35,9 @@
     --radius: 0.5rem;
     --font-doto: "DOTO", sans-serif;
     
-    /* Glow effect colors for light mode */
-    --glow-color-1: 199 89% 48%;
-    --glow-color-2: 217 91% 60%;
+    /* Glow effect colors for light mode - orange theme */
+    --glow-color-1: 29 77% 49%;
+    --glow-color-2: 35 91% 55%;
     --glow-opacity: 0.3;
   }
 
@@ -70,9 +70,9 @@
     --input: 215 28% 17%;
     --ring: 220 70% 50%;
     
-    /* Glow effect colors for dark mode */
-    --glow-color-1: 199 89% 48%;
-    --glow-color-2: 217 91% 60%;
+    /* Glow effect colors for dark mode - orange theme */
+    --glow-color-1: 29 77% 49%;
+    --glow-color-2: 35 91% 55%;
     --glow-opacity: 0.5;
   }
 
