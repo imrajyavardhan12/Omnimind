@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Model } from '../types'
 
-export type ViewMode = 'single' | 'compare'
+export type ViewMode = 'single' | 'compare' | 'council'
 
 interface ViewModeState {
   viewMode: ViewMode
@@ -32,16 +32,20 @@ export const useViewModeStore = create<ViewModeState>()(
       setViewMode: (mode: ViewMode) => {
         const currentMode = get().viewMode
         
-        // When switching from compare to single, hide header first then change mode
-        if (currentMode === 'compare' && mode === 'single') {
+        // When switching from compare/council to single, hide header first then change mode
+        if ((currentMode === 'compare' || currentMode === 'council') && mode === 'single') {
           set({ isHeaderVisible: false })
           // Delay mode change to allow header animation to complete
           setTimeout(() => {
             set({ viewMode: mode })
           }, 250)
         } 
-        // When switching from single to compare, change mode immediately
-        else if (currentMode === 'single' && mode === 'compare') {
+        // When switching from single to compare or council, change mode immediately
+        else if (currentMode === 'single' && (mode === 'compare' || mode === 'council')) {
+          set({ viewMode: mode, isHeaderVisible: true })
+        }
+        // When switching between compare and council
+        else if ((currentMode === 'compare' && mode === 'council') || (currentMode === 'council' && mode === 'compare')) {
           set({ viewMode: mode, isHeaderVisible: true })
         }
         else {

@@ -346,7 +346,7 @@ export const anthropicVerifiedModels: VerifiedModel[] = [
 ]
 
 // ========================================
-// Google Gemini Models (7 verified models - includes latest 2025 models)
+// Google Gemini Models (Working models with correct API IDs)
 // ========================================
 export const geminiVerifiedModels: VerifiedModel[] = [
   {
@@ -365,6 +365,26 @@ export const geminiVerifiedModels: VerifiedModel[] = [
     },
     speed: 'very-fast',
     tags: ['recommended', 'vision', 'cheapest', 'ultra-fast', 'reasoning', 'latest'],
+    recommended: true,
+    supportsFiles: true,
+    supportedFileTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+  },
+  {
+    id: 'gemini-2.5-flash-lite',
+    name: 'Gemini 2.5 Flash Lite',
+    provider: 'gemini',
+    description: 'Ultra-fast and cost-efficient for high throughput tasks',
+    contextLength: 1048576, // 1M tokens
+    inputCost: 0.000037, // Cheaper than Flash
+    outputCost: 0.00015,
+    capabilities: {
+      vision: true,
+      streaming: true,
+      jsonMode: true,
+      functionCalling: true
+    },
+    speed: 'very-fast',
+    tags: ['recommended', 'vision', 'cheapest', 'ultra-fast'],
     recommended: true,
     supportsFiles: true,
     supportedFileTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
@@ -393,66 +413,10 @@ export const geminiVerifiedModels: VerifiedModel[] = [
     id: 'gemini-2.0-flash-lite',
     name: 'Gemini 2.0 Flash-Lite',
     provider: 'gemini',
-    description: 'Most cost-efficient Gemini model, great for large-scale text',
+    description: 'Most cost-efficient Gemini 2.0 model',
     contextLength: 1048576, // 1M tokens
-    inputCost: 0.000037, // $0.037 per 1M input tokens (estimated)
-    outputCost: 0.00015, // $0.15 per 1M output tokens
-    capabilities: {
-      vision: false,
-      streaming: true,
-      jsonMode: true,
-      functionCalling: true
-    },
-    speed: 'very-fast',
-    tags: ['cheapest', 'ultra-fast', 'large-context'],
-    supportsFiles: false
-  },
-  {
-    id: 'gemini-2.0-pro-experimental',
-    name: 'Gemini 2.0 Pro (Experimental)',
-    provider: 'gemini',
-    description: 'Most advanced Gemini for coding and complex prompts',
-    contextLength: 1048576, // 1M tokens
-    inputCost: 0.00125,  // $1.25 per 1M input tokens (estimated)
-    outputCost: 0.005,   // $5.00 per 1M output tokens
-    capabilities: {
-      vision: true,
-      streaming: true,
-      jsonMode: true,
-      functionCalling: true
-    },
-    speed: 'fast',
-    tags: ['vision', 'coding', 'experimental', 'advanced', 'large-context'],
-    supportsFiles: true,
-    supportedFileTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'audio/*', 'video/*']
-  },
-  {
-    id: 'gemini-1.5-pro',
-    name: 'Gemini 1.5 Pro',
-    provider: 'gemini',
-    description: 'Stable model with 2M token context, excellent for long documents',
-    contextLength: 2097152, // 2M tokens!
-    inputCost: 0.00125,  // $1.25 per 1M input tokens
-    outputCost: 0.005,   // $5.00 per 1M output tokens
-    capabilities: {
-      vision: true,
-      streaming: true,
-      jsonMode: true,
-      functionCalling: true
-    },
-    speed: 'fast',
-    tags: ['vision', 'huge-context', 'analysis', 'coding'],
-    supportsFiles: true,
-    supportedFileTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-  },
-  {
-    id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash',
-    provider: 'gemini',
-    description: 'Fast and efficient with 1M context, great for most tasks',
-    contextLength: 1048576, // 1M tokens
-    inputCost: 0.000075, // $0.075 per 1M input tokens
-    outputCost: 0.0003,  // $0.30 per 1M output tokens
+    inputCost: 0.000037,
+    outputCost: 0.00015,
     capabilities: {
       vision: true,
       streaming: true,
@@ -460,47 +424,9 @@ export const geminiVerifiedModels: VerifiedModel[] = [
       functionCalling: true
     },
     speed: 'very-fast',
-    tags: ['recommended', 'vision', 'cheap', 'fast', 'large-context'],
-    recommended: true,
+    tags: ['cheapest', 'ultra-fast', 'large-context'],
     supportsFiles: true,
     supportedFileTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-  },
-  {
-    id: 'gemini-1.5-flash-8b',
-    name: 'Gemini 1.5 Flash 8B',
-    provider: 'gemini',
-    description: 'Smallest and cheapest with 1M context, very fast',
-    contextLength: 1048576,
-    inputCost: 0.0000375, // $0.0375 per 1M input tokens
-    outputCost: 0.00015,  // $0.15 per 1M output tokens
-    capabilities: {
-      vision: true,
-      streaming: true,
-      jsonMode: true,
-      functionCalling: true
-    },
-    speed: 'very-fast',
-    tags: ['vision', 'cheapest', 'fast', 'large-context'],
-    supportsFiles: true,
-    supportedFileTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-  },
-  {
-    id: 'gemini-pro',
-    name: 'Gemini Pro',
-    provider: 'gemini',
-    description: 'Legacy model, smaller context',
-    contextLength: 32768,
-    inputCost: 0.0005,
-    outputCost: 0.0015,
-    capabilities: {
-      vision: false,
-      streaming: true,
-      jsonMode: true,
-      functionCalling: true
-    },
-    speed: 'fast',
-    tags: ['legacy'],
-    supportsFiles: false
   }
 ]
 

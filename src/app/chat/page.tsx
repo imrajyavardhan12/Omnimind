@@ -19,6 +19,7 @@ import { ViewModeToggle } from '@/components/ui/ViewModeToggle'
 import { OnboardingModal } from '@/components/OnboardingModal'
 import { UrlHashMessageHandler } from '@/components/chat/UrlHashMessageHandler'
 import { ModelCommandPalette } from '@/components/chat/ModelCommandPalette'
+import { CouncilInterface } from '@/components/council'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useViewModeStore } from '@/lib/stores/viewMode'
 import { useChatStore } from '@/lib/stores/chat'
@@ -232,6 +233,18 @@ export default function Home() {
                     className="h-full"
                   >
                     <SingleChatInterface className="h-full" />
+                  </motion.div>
+                ) : viewMode === 'council' ? (
+                  /* Council Mode - LLM Debate */
+                  <motion.div
+                    key="council-mode"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="h-full"
+                  >
+                    <CouncilInterface className="h-full" />
                   </motion.div>
                 ) : (
                   /* Compare Mode - Multi-Model Grid */
