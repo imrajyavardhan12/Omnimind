@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { ProviderName, Message, ChatRequest } from '@/lib/types'
+import { ProviderName, Message, ChatRequest, RetryStatus } from '@/lib/types'
 import { useChatStore } from '@/lib/stores/chat'
 import { useSettingsStore } from '@/lib/stores/settings'
 import { estimateTokens, calculateCost } from '@/lib/utils/tokenizer'
@@ -9,12 +9,14 @@ interface UseChatOptions {
   provider: ProviderName
   onMessage?: (message: Message) => void
   onError?: (error: Error) => void
+  onRetry?: (status: RetryStatus) => void
   skipAddingUserMessage?: boolean
   modelIdOverride?: string // Allow overriding the model ID for multi-model providers
 }
 
-export function useChat({ provider, onMessage, onError, skipAddingUserMessage, modelIdOverride }: UseChatOptions) {
+export function useChat({ provider, onMessage, onError, onRetry, skipAddingUserMessage, modelIdOverride }: UseChatOptions) {
   const [isStreaming, setIsStreaming] = useState(false)
+  const [retryStatus, setRetryStatus] = useState<RetryStatus | null>(null)
   
   const { 
     getActiveSession, 
@@ -198,6 +200,25 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
 
             try {
               const chunk = JSON.parse(data)
+              
+              // Handle retry status updates
+              if (chunk.retryStatus) {
+                const status: RetryStatus = chunk.retryStatus
+                setRetryStatus(status)
+                onRetry?.(status)
+                
+                // Update message to show retry status
+                updateMessage(sessionId, assistantMessageId, {
+                  content: `⏳ Retrying... (attempt ${status.attempt}/${status.maxAttempts})\n\n_${status.error}_`
+                })
+                continue
+              }
+              
+              // Clear retry status when we get actual content
+              if (retryStatus) {
+                setRetryStatus(null)
+              }
+              
               if (chunk.content) {
                 fullContent += chunk.content
                 updateMessage(sessionId, assistantMessageId, {
@@ -257,6 +278,7 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
       setAbortController(requestKey, null)
       setLoading(requestKey, false)
       setIsStreaming(false)
+      setRetryStatus(null)
     }
   }, [
     provider,
@@ -275,13 +297,16 @@ export function useChat({ provider, onMessage, onError, skipAddingUserMessage, m
     createSession,
     onMessage,
     onError,
+    onRetry,
     modelIdOverride,
     skipAddingUserMessage,
-    setAbortController
+    setAbortController,
+    retryStatus
   ])
 
   return {
     sendMessage,
-    isStreaming
+    isStreaming,
+    retryStatus
   }
 }

@@ -55,11 +55,19 @@ export interface ChatResponse {
   finishReason?: string
 }
 
+export interface RetryStatus {
+  attempt: number
+  maxAttempts: number
+  isRetrying: boolean
+  error?: string
+}
+
 export interface StreamChunk {
   id: string
   content: string
   done: boolean
   tokens?: number
+  retryStatus?: RetryStatus
 }
 
 export interface ProviderConfig {
