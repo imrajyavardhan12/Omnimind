@@ -14,8 +14,8 @@ A web app for comparing responses from multiple AI models side by side. Chat wit
 ## Setup
 
 1. Clone the repository
-2. Install dependencies: `npm install`
-3. Start development server: `npm run dev`
+2. Install dependencies: `bun install`
+3. Start development server: `bun run dev`
 4. Open http://localhost:3000
 
 ## Configuration
@@ -31,13 +31,14 @@ Keys are stored locally in your browser only.
 ## Build for Production
 
 ```bash
-npm run build
-npm start
+bun run build
+bun start
 ```
 
 ## Tech Stack
 
 - Next.js 14
+- Bun runtime
 - TypeScript
 - Tailwind CSS
 - Zustand for state management

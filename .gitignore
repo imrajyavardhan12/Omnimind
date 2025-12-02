@@ -10,6 +10,9 @@
 .pnp.js
 .yarn/install-state.gz
 
+# npm (replaced by bun)
+package-lock.json
+
 # testing
 /coverage
 
