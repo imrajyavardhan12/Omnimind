@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Send, Loader2, Square, Folder } from 'lucide-react'
-import { LiquidMetal, PulsingBorder } from "@paper-design/shaders-react"
+import { LazyLiquidMetal, LazyPulsingBorder } from "@/components/ui/LazyShaders"
 import { motion } from "framer-motion"
 import { useSettingsStore } from '@/lib/stores/settings'
 import { useChatStore } from '@/lib/stores/chat'
@@ -395,7 +395,7 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
                 <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-5 left-9 blur-[0.8px] opacity-80" />
                 <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-7 left-7  blur-[1px] opacity-70" />
               </div>
-              <LiquidMetal
+              <LazyLiquidMetal
                 style={{ height: 80, width: 80, filter: "blur(14px)", position: "absolute" }}
                 colorBack="hsl(0, 0%, 0%, 0)"
                 colorTint="hsl(29, 77%, 49%)"
@@ -412,7 +412,7 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
                 rotation={50}
                 speed={5}
               />
-              <LiquidMetal
+              <LazyLiquidMetal
                 style={{ height: 80, width: 80 }}
                 colorBack="hsl(0, 0%, 0%, 0)"
                 colorTint="hsl(29, 77%, 49%)"
@@ -459,7 +459,7 @@ export function AnimatedUnifiedInput({ className }: AnimatedUnifiedInputProps) {
               duration: 0.8, 
             }}
           >
-            <PulsingBorder
+            <LazyPulsingBorder
               style={{ height: "146.5%", minWidth: "143%" }}
               colorBack="hsl(0, 0%, 0%, 0)"
               roundness={0.18}

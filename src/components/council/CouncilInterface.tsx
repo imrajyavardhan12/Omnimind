@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Send, Square, Loader2, Users, RotateCcw, ChevronUp, ChevronDown } from 'lucide-react'
-import { LiquidMetal, PulsingBorder } from "@paper-design/shaders-react"
+import { LazyLiquidMetal, LazyPulsingBorder } from "@/components/ui/LazyShaders"
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { CouncilModelSelector } from './CouncilModelSelector'
@@ -256,7 +256,7 @@ export function CouncilInterface({ className }: CouncilInterfaceProps) {
                   <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-5 left-9 blur-[0.8px] opacity-80" />
                   <div className="h-[2px] w-[2px] bg-foreground rounded-full absolute top-7 left-7 blur-[1px] opacity-70" />
                 </div>
-                <LiquidMetal
+                <LazyLiquidMetal
                   style={{ height: 80, width: 80, filter: "blur(14px)", position: "absolute" }}
                   colorBack="hsl(0, 0%, 0%, 0)"
                   colorTint="hsl(29, 77%, 49%)"
@@ -273,7 +273,7 @@ export function CouncilInterface({ className }: CouncilInterfaceProps) {
                   rotation={50}
                   speed={5}
                 />
-                <LiquidMetal
+                <LazyLiquidMetal
                   style={{ height: 80, width: 80 }}
                   colorBack="hsl(0, 0%, 0%, 0)"
                   colorTint="hsl(29, 77%, 49%)"
@@ -322,7 +322,7 @@ export function CouncilInterface({ className }: CouncilInterfaceProps) {
                 duration: 0.8, 
               }}
             >
-              <PulsingBorder
+              <LazyPulsingBorder
                 style={{ height: "146.5%", minWidth: "143%" }}
                 colorBack="hsl(0, 0%, 0%, 0)"
                 roundness={0.18}

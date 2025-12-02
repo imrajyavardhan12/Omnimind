@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Brain, Link, Folder, Mic, Send } from "lucide-react"
-import { LiquidMetal, PulsingBorder } from "@paper-design/shaders-react"
+import { LazyLiquidMetal, LazyPulsingBorder } from "@/components/ui/LazyShaders"
 import { motion } from "framer-motion"
 import { useState } from "react"
 import { useSettingsStore } from "@/lib/stores/settings"
@@ -84,7 +84,7 @@ export function ChatInterface() {
               <div className="h-[2px] w-[2px] bg-white rounded-full absolute top-5 left-9 blur-[0.8px]" />
               <div className="h-[2px] w-[2px] bg-white rounded-full absolute top-7 left-7  blur-[1px]" />
             </div>
-            <LiquidMetal
+            <LazyLiquidMetal
               style={{ height: 80, width: 80, filter: "blur(14px)", position: "absolute" }}
               colorBack="hsl(0, 0%, 0%, 0)"
               colorTint="hsl(29, 77%, 49%)"
@@ -101,7 +101,7 @@ export function ChatInterface() {
               rotation={50}
               speed={5}
             />
-            <LiquidMetal
+            <LazyLiquidMetal
               style={{ height: 80, width: 80 }}
               colorBack="hsl(0, 0%, 0%, 0)"
               colorTint="hsl(29, 77%, 49%)"
@@ -148,7 +148,7 @@ export function ChatInterface() {
               duration: 0.8, 
             }}
           >
-            <PulsingBorder
+            <LazyPulsingBorder
               style={{ height: "146.5%", minWidth: "143%" }}
               colorBack="hsl(0, 0%, 0%)"
               roundness={0.18}
