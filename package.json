@@ -3,53 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "type-check": "tsc --noEmit",
-    "validate": "npm run type-check && npm run lint"
-  },
-  "dependencies": {
-    "@paper-design/shaders-react": "^0.0.46",
-    "@radix-ui/react-select": "^2.2.6",
-    "@radix-ui/react-slot": "^1.1.0",
-    "@radix-ui/react-switch": "^1.2.6",
-    "@supabase/ssr": "^0.7.0",
-    "@supabase/supabase-js": "^2.58.0",
-    "@tailwindcss/typography": "^0.5.16",
-    "@tanstack/react-query": "^5.59.0",
-    "@types/prismjs": "^1.26.5",
-    "@types/react-window": "^1.8.8",
-    "autoprefixer": "^10.4.21",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.1",
-    "cmdk": "^1.1.1",
-    "framer-motion": "^12.23.12",
-    "geist": "^1.4.2",
-    "js-tiktoken": "^1.0.21",
-    "lucide-react": "^0.446.0",
-    "next": "^14.2.33",
-    "prismjs": "^1.30.0",
-    "react": "^18",
-    "react-dom": "^18",
-    "react-markdown": "^10.1.0",
-    "react-window": "^2.1.2",
-    "rehype-raw": "^7.0.0",
-    "remark-gfm": "^4.0.1",
-    "tailwind-merge": "^2.5.2",
-    "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.23.8",
-    "zustand": "^5.0.8"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "type-check": "turbo run type-check",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "dev:api": "turbo run dev --filter=@omnimind/api",
+    "dev:web": "turbo run dev --filter=@omnimind/web"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.15",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
+    "turbo": "^2.3.3",
     "typescript": "^5"
+  },
+  "packageManager": "pnpm@10.25.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "unrs-resolver"]
   }
 }

@@ -1,3 +1,4 @@
 {
-  "bunVersion": "1.2"
+  "framework": "nextjs",
+  "rootDirectory": "apps/web"
 }
