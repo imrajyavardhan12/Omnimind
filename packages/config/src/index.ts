@@ -1,2 +1,2 @@
-export { apiEnvSchema, parseApiEnv } from "./env"
-export type { ApiEnv } from "./env"
+export { apiEnvSchema, parseApiEnv, webEnvSchema, parseWebEnv } from "./env"
+export type { ApiEnv, WebEnv } from "./env"

@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 export const dynamic = 'force-dynamic'
 import { Settings, ChevronUp, ChevronDown, RotateCcw, LogOut, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '@/contexts/AuthContext'
+import { useUser, useClerk } from '@clerk/nextjs'
 import { SettingsPanel } from '@/components/settings/SettingsPanel'
 import { SessionStats } from '@/components/chat/SessionStats'
 import { ExportButton } from '@/components/chat/ExportButton'
@@ -32,7 +32,8 @@ export default function Home() {
   const { selectedModels } = useModelTabsStore()
   const { viewMode, isHeaderVisible, setIsHeaderVisible, toggleHeaderVisibility } = useViewModeStore()
   const { isLoading, getActiveSession, createSession } = useChatStore()
-  const { user, signOut } = useAuth()
+  const { user } = useUser()
+  const { signOut } = useClerk()
   
   // Check if user should see onboarding
   useEffect(() => {
@@ -70,10 +71,8 @@ export default function Home() {
   }, [])
   
   const handleSignOut = async () => {
-    await signOut()
     setShowUserMenu(false)
-    // Force hard redirect to login page
-    window.location.href = '/auth/login'
+    await signOut({ redirectUrl: '/auth/login' })
   }
   
   // Auto-hide header during response generation (compare mode only)
@@ -182,16 +181,16 @@ export default function Home() {
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent"
-                    title={user?.email || 'User'}
+                    title={user?.primaryEmailAddress?.emailAddress || 'User'}
                   >
                     <User className="w-4 h-4" />
-                    <span className="hidden md:inline max-w-[150px] truncate">{user?.email}</span>
+                    <span className="hidden md:inline max-w-[150px] truncate">{user?.primaryEmailAddress?.emailAddress}</span>
                   </button>
                   
                   {showUserMenu && (
                     <div className="absolute right-0 mt-2 w-64 bg-background border border-border rounded-md shadow-lg z-50">
                       <div className="p-3 border-b border-border">
-                        <p className="text-sm font-medium">{user?.email}</p>
+                        <p className="text-sm font-medium">{user?.primaryEmailAddress?.emailAddress}</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           User ID: {user?.id?.slice(0, 8)}...
                         </p>

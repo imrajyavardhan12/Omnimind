@@ -6,9 +6,19 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "drizzle-orm": "^0.44.1"
   },
   "devDependencies": {
+    "@types/node": "^20",
+    "dotenv": "^16.4.7",
+    "drizzle-kit": "^0.31.1",
     "typescript": "^5"
   }
 }

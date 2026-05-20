@@ -5,23 +5,20 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ThemeProvider } from '@/components/providers/theme-provider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 export function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isLandingPage = pathname === '/'
-  
+
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    // Emit custom event that the chat page will listen to
     window.dispatchEvent(new CustomEvent('omnimind:close-settings'))
   }
 
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <ErrorBoundary>
+      <ErrorBoundary>
           <div className="h-screen bg-background overflow-x-hidden overflow-y-hidden flex flex-col">
             {!isLandingPage && (
               <header className="flex-shrink-0 border-b border-border px-3 sm:px-6 py-3">
@@ -78,7 +75,6 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
             </main>
           </div>
         </ErrorBoundary>
-      </AuthProvider>
     </ThemeProvider>
   )
 }

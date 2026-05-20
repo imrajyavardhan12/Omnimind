@@ -1,3 +1,6 @@
-// Phase 1: Drizzle ORM schema, migrations, and repositories will be added here.
-// See docs/architecture/10-data-model.md and docs/adr/0005-postgres-primary-store.md.
-export {}
+export { createDb, type Db } from './client.js'
+export * from './schema/index.js'
+export { UserRepository } from './repositories/user.repository.js'
+export { WorkspaceRepository } from './repositories/workspace.repository.js'
+export { ConversationRepository } from './repositories/conversation.repository.js'
+export { MessageRepository } from './repositories/message.repository.js'
