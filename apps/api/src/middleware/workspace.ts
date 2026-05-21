@@ -8,12 +8,10 @@ export function createWorkspaceMiddleware(db: Db, clerkSecretKey: string): Middl
   const clerk = createClerkClient({ secretKey: clerkSecretKey })
 
   return async (c: Context<{ Variables: ApiVariables }>, next: Next) => {
-    const rid = c.get('requestId')
     const clerkUserId = c.get('clerkUserId')
     const userRepo = new UserRepository(db)
     const workspaceRepo = new WorkspaceRepository(db)
 
-    // Fetch Clerk user to get real email/name for the upsert
     let email = `${clerkUserId}@clerk.placeholder`
     let name: string | undefined
     try {
@@ -25,16 +23,11 @@ export function createWorkspaceMiddleware(db: Db, clerkSecretKey: string): Middl
     }
 
     const user = await userRepo.upsertFromClerk({ clerkUserId, email, name })
-
-    let workspace = await workspaceRepo.findByUserId(user.id)
-    if (!workspace) {
-      const slug = `workspace-${user.id.slice(0, 8)}`
-      workspace = await workspaceRepo.create({ name: 'My Workspace', slug })
-      await workspaceRepo.addMember(workspace.id, user.id, 'owner')
-    }
+    const { workspace, role } = await workspaceRepo.findOrCreateDefault(user.id)
 
     c.set('userId', user.id)
     c.set('workspaceId', workspace.id)
+    c.set('userRole', role)
     await next()
   }
 }

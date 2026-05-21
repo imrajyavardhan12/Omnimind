@@ -10,6 +10,7 @@ export const apiEnvSchema = baseEnvSchema.extend({
   DATABASE_URL: z.string().url(),
   CLERK_SECRET_KEY: z.string().min(1),
   ALLOWED_ORIGIN: z.string().url().default("http://localhost:3000"),
+  PROVIDER_KEY_ENCRYPTION_SECRET: z.string().regex(/^[0-9a-fA-F]{64}$/, 'PROVIDER_KEY_ENCRYPTION_SECRET must be exactly 64 hex characters (32 bytes)'),
 })
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>

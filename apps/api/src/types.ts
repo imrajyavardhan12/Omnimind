@@ -3,4 +3,5 @@ export interface ApiVariables {
   clerkUserId: string
   userId: string
   workspaceId: string
+  userRole: 'owner' | 'admin' | 'member' | 'viewer'
 }

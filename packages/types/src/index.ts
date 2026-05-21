@@ -15,3 +15,8 @@ export type {
   UpdateConversationInput,
   CreateMessageInput,
 } from "./api/conversations"
+export {
+  providerNameSchema,
+  upsertProviderKeySchema,
+} from "./api/provider-keys"
+export type { ProviderName, UpsertProviderKeyInput } from "./api/provider-keys"

@@ -5,6 +5,8 @@ import { Eye, EyeOff, Key, Trash2, Sparkles } from 'lucide-react'
 import { ProviderName } from '@/lib/types'
 import { useSettingsStore } from '@/lib/stores/settings'
 import { cn } from '@/lib/utils'
+import { useUpsertProviderKey, useDeleteProviderKey, useProviderKeys } from '@/features/provider-keys/hooks/useProviderKeys'
+import type { ProviderName as ApiProviderName } from '@omnimind/types'
 
 interface ApiKeyManagerProps {
   provider: ProviderName
@@ -15,21 +17,28 @@ export function ApiKeyManager({ provider, className }: ApiKeyManagerProps) {
   const [showKey, setShowKey] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const { providers, setApiKey, getApiKey, removeApiKey } = useSettingsStore()
-  
+  const upsertServerKey = useUpsertProviderKey()
+  const deleteServerKey = useDeleteProviderKey()
+  const { data: serverKeys } = useProviderKeys()
+
   const providerConfig = providers[provider]
-  const hasApiKey = !!providerConfig.apiKey
+  const hasLocalKey = !!providerConfig.apiKey
+  const hasServerKey = serverKeys?.some((k) => k.provider === provider) ?? false
+  const hasApiKey = hasLocalKey || hasServerKey
   const isFreeProvider = providerConfig.isFree
 
   const handleSave = () => {
-    if (inputValue.trim()) {
-      setApiKey(provider, inputValue.trim())
-      setInputValue('')
-      setShowKey(false)
-    }
+    const trimmed = inputValue.trim()
+    if (!trimmed) return
+    setApiKey(provider, trimmed)
+    upsertServerKey.mutate({ provider: provider as ApiProviderName, key: trimmed })
+    setInputValue('')
+    setShowKey(false)
   }
 
   const handleRemove = () => {
     removeApiKey(provider)
+    deleteServerKey.mutate(provider as ApiProviderName)
     setInputValue('')
     setShowKey(false)
   }

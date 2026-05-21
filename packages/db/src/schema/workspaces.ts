@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { appUsers } from './users.js'
 
 export const workspaces = pgTable('workspaces', {
@@ -22,7 +22,9 @@ export const workspaceMembers = pgTable('workspace_members', {
     .default('owner'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+}, (table) => [
+  uniqueIndex('workspace_members_workspace_user_idx').on(table.workspaceId, table.userId),
+])
 
 export type Workspace = typeof workspaces.$inferSelect
 export type NewWorkspace = typeof workspaces.$inferInsert
