@@ -13,7 +13,7 @@
     "@clerk/nextjs": "^6.20.0",
     "@omnimind/config": "workspace:*",
     "@omnimind/types": "workspace:*",
-    "@paper-design/shaders-react": "^0.0.46",
+    "@paper-design/shaders-react": "^0.0.76",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-switch": "^1.2.6",

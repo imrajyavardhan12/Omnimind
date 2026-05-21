@@ -58,8 +58,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/types
       '@paper-design/shaders-react':
-        specifier: ^0.0.46
-        version: 0.0.46(@types/react@18.3.29)(react@18.3.1)
+        specifier: ^0.0.76
+        version: 0.0.76(@types/react@18.3.29)(react@18.3.1)
       '@radix-ui/react-select':
         specifier: ^2.2.6
         version: 2.2.6(@types/react-dom@18.3.7(@types/react@18.3.29))(@types/react@18.3.29)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -996,8 +996,8 @@ packages:
   '@oxc-project/types@0.132.0':
     resolution: {integrity: sha512-FESMOxil5Se014ui/Eq8fT5uHJo6nIRwH0PfJrZJXs6Gek3ZVFOrpUv3YIZT20m+extU98Hg1Ym72U58rlsxUQ==}
 
-  '@paper-design/shaders-react@0.0.46':
-    resolution: {integrity: sha512-bvgLvw8Cozmhw1spRmaabT/bh3N4G/Qq6Mb8yOWvWccTmo1UB7YKhEDbHbgCevvry2BgPGotrlfCE+YGeDeY7g==}
+  '@paper-design/shaders-react@0.0.76':
+    resolution: {integrity: sha512-uPJWrYRf6cJdO2H+fuXlahaqz0QjYglNAyUTaRfIInpzCa/d6guxBIK003soAZQFuQ035yg9FhtfFzKNWm+a5A==}
     peerDependencies:
       '@types/react': ^18 || ^19
       react: ^18 || ^19
@@ -1005,8 +1005,8 @@ packages:
       '@types/react':
         optional: true
 
-  '@paper-design/shaders@0.0.46':
-    resolution: {integrity: sha512-ErPQwLguvv7qI8E+bdwSaNQF27Q8MnZmtD8rGp+K473AYee+cXWv2OqBkKnuMl/n1JmL8vBxSSTflOfO6DB4aQ==}
+  '@paper-design/shaders@0.0.76':
+    resolution: {integrity: sha512-AcNDY4J66YQHUfQYFInkCP7M9VOje0od7wLpOR7LtCmc532opJy6ll+h1W9zBovz8tt9U7OADUmJ/qKEXyOX/A==}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -4563,14 +4563,14 @@ snapshots:
 
   '@oxc-project/types@0.132.0': {}
 
-  '@paper-design/shaders-react@0.0.46(@types/react@18.3.29)(react@18.3.1)':
+  '@paper-design/shaders-react@0.0.76(@types/react@18.3.29)(react@18.3.1)':
     dependencies:
-      '@paper-design/shaders': 0.0.46
+      '@paper-design/shaders': 0.0.76
       react: 18.3.1
     optionalDependencies:
       '@types/react': 18.3.29
 
-  '@paper-design/shaders@0.0.46': {}
+  '@paper-design/shaders@0.0.76': {}
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
