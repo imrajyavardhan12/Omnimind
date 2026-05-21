@@ -1,20 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { X, Plus, Check, Search, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { X, Plus, Check, Search, Loader2, AlertCircle } from 'lucide-react'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { Model, ProviderName } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { getProviderIcon } from '@/components/ui/provider-icons'
+import { getProviderIcon, getProviderDisplayName } from '@/components/ui/provider-icons'
 import { useSettingsStore } from '@/lib/stores/settings'
 import { Portal } from '@/components/ui/portal'
-import { 
-  openaiVerifiedModels, 
-  anthropicVerifiedModels, 
-  geminiVerifiedModels, 
-  openrouterVerifiedModels,
-  VerifiedModel
-} from '@/lib/models/verified-models'
+import type { VerifiedModel } from '@/lib/models/verified-models'
+import { useAvailableModels } from '@/features/models/hooks/useModels'
 import { ModelBadges } from './ModelBadges'
 
 interface ModelSelectionModalProps {
@@ -30,12 +25,9 @@ interface ModelsByProvider {
 
 export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode = false }: ModelSelectionModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
-  const { getAllAvailableModels, addModel, isModelSelected, canAddMore } = useModelTabsStore()
+  const { addModel, isModelSelected, canAddMore } = useModelTabsStore()
   const { providers } = useSettingsStore()
-  
-  // Use verified models instead of dynamic API fetching
-  const allModels = getAllAvailableModels()
+  const { models: allModels, isLoading, error } = useAvailableModels({ enabledOnly: true })
   
   // Group models by provider
   const modelsByProvider: ModelsByProvider = allModels.reduce((acc, model) => {
@@ -58,25 +50,10 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
     return acc
   }, {} as ModelsByProvider)
 
-  const getProviderDisplayName = (provider: string) => {
-    switch (provider) {
-      case 'openai': return 'OpenAI'
-      case 'anthropic': return 'Anthropic'
-      case 'gemini': return 'Google Gemini'
-      case 'openrouter': return 'OpenRouter'
-      default: return provider
-    }
-  }
-
-  // No loading needed - models are now static/verified
-  const isProviderLoading = (provider: string) => false
-
   const handleAddModel = (model: Model) => {
     if (singleMode) {
-      // For single mode, call the onModelSelect callback
       onModelSelect?.(model)
     } else {
-      // For compare mode, add to model tabs
       if (!canAddMore()) return
       addModel(model)
     }
@@ -116,10 +93,31 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
 
         {/* Models by Provider */}
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-6">
-            {Object.entries(filteredModelsByProvider).map(([provider, models]) => {
-              const isLoading = isProviderLoading(provider)
-              const hasApiKey = providers[provider as ProviderName]?.apiKey
+          {isLoading && (
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading model catalog...
+            </div>
+          )}
+
+          {error && (
+            <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              <AlertCircle className="w-4 h-4" />
+              Failed to load model catalog. Try again after checking your session and API server.
+            </div>
+          )}
+
+          {!isLoading && !error && Object.keys(filteredModelsByProvider).length === 0 && (
+            <div className="py-12 text-center text-sm text-muted-foreground">
+              No models found.
+            </div>
+          )}
+
+          {!isLoading && !error && (
+            <div className="space-y-6">
+              {Object.entries(filteredModelsByProvider).map(([provider, models]) => {
+              const providerConfig = providers[provider as ProviderName]
+              const hasProviderAccess = Boolean(providerConfig?.apiKey || providerConfig?.isFree)
               
               return (
                 <div key={provider}>
@@ -127,21 +125,19 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
                     <div className="w-6 h-6">{getProviderIcon(provider, "w-6 h-6")}</div>
                     <h3 className="text-lg font-semibold">{getProviderDisplayName(provider)}</h3>
                     <span className="text-sm text-muted-foreground">({models.length} models)</span>
-                    {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-
                   </div>
                   
-                  {!hasApiKey && (
+                  {!hasProviderAccess && (
                     <div className="mb-3 p-3 bg-muted/50 rounded-md text-sm text-muted-foreground">
-                      Configure API key in Settings to see available models
+                      Configure API key in Settings before selecting these models
                     </div>
                   )}
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {models.map((model) => {
-                      const selected = isModelSelected(model.id)
-                      const canAdd = canAddMore() || selected
-                      const isFree = model.name.includes('FREE') || model.inputCost === 0
+                      const selected = isModelSelected(model.id, model.provider)
+                      const canSelect = hasProviderAccess && (singleMode || canAddMore() || selected)
+                      const isFree = Boolean(providerConfig?.isFree) || model.name.includes('FREE') || model.inputCost === 0
                       const verifiedModel = model as VerifiedModel
                       
                       return (
@@ -151,11 +147,11 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
                             'p-4 border rounded-lg transition-all',
                             selected 
                               ? 'border-primary bg-primary/5' 
-                              : canAdd
+                              : canSelect
                               ? 'border-border hover:border-primary/50 hover:bg-accent/50 cursor-pointer'
                               : 'border-muted bg-muted/30 cursor-not-allowed opacity-50'
                           )}
-                          onClick={() => canAdd && !selected && handleAddModel(model)}
+                          onClick={() => canSelect && !selected && handleAddModel(model)}
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1 min-w-0 space-y-2">
@@ -192,7 +188,7 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
                                 <div className="p-1 rounded-full bg-primary text-primary-foreground">
                                   <Check className="w-4 h-4" />
                                 </div>
-                              ) : canAdd ? (
+                              ) : canSelect ? (
                                 <div className="p-1 rounded-full border border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
                                   <Plus className="w-4 h-4" />
                                 </div>
@@ -210,13 +206,14 @@ export function ModelSelectionModal({ isOpen, onClose, onModelSelect, singleMode
                 </div>
               )
             })}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
         <div className="p-6 border-t border-border">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Select up to 5 models to compare</span>
+            <span>{singleMode ? 'Choose one model' : 'Select up to 5 models to compare'}</span>
             <span>{Object.values(filteredModelsByProvider).flat().length} models available</span>
           </div>
         </div>

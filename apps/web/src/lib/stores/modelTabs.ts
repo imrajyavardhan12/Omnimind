@@ -2,15 +2,6 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Model, ProviderName } from '../types'
 
-// Import all verified models
-import { 
-  openaiVerifiedModels, 
-  anthropicVerifiedModels, 
-  geminiVerifiedModels,
-  googleAIStudioVerifiedModels,
-  openrouterVerifiedModels 
-} from '../models/verified-models'
-
 export interface ModelSettings {
   temperature: number
   maxTokens: number
@@ -33,21 +24,11 @@ interface ModelTabsState {
   addModel: (model: Model) => void
   removeModel: (selectedModelId: string) => void
   clearAllModels: () => void
-  getAllAvailableModels: () => Model[]
-  isModelSelected: (modelId: string) => boolean
+  isModelSelected: (modelId: string, provider?: string) => boolean
   canAddMore: () => boolean
   updateModelSettings: (selectedModelId: string, settings: Partial<ModelSettings>) => void
   getModelSettings: (selectedModelId: string) => ModelSettings | null
 }
-
-// Combine all models from all providers
-const allModels = [
-  ...openaiVerifiedModels,
-  ...anthropicVerifiedModels, 
-  ...geminiVerifiedModels,
-  ...googleAIStudioVerifiedModels,
-  ...openrouterVerifiedModels
-]
 
 export const useModelTabsStore = create<ModelTabsState>()(
   persist(
@@ -71,13 +52,13 @@ export const useModelTabsStore = create<ModelTabsState>()(
           return
         }
 
-        if (get().isModelSelected(model.id)) {
-          console.warn(`Model ${model.id} is already selected`)
+        if (get().isModelSelected(model.id, model.provider)) {
+          console.warn(`Model ${model.provider}/${model.id} is already selected`)
           return
         }
 
         const newSelectedModel: SelectedModel = {
-          id: `tab-${Date.now()}`, // Unique ID for tab
+          id: `tab-${model.provider}-${model.id}-${Date.now()}`,
           model,
           provider: model.provider as ProviderName,
           settings: { ...get().defaultSettings }
@@ -98,13 +79,9 @@ export const useModelTabsStore = create<ModelTabsState>()(
         set({ selectedModels: [] })
       },
 
-      getAllAvailableModels: () => {
-        return allModels
-      },
-
-      isModelSelected: (modelId: string) => {
+      isModelSelected: (modelId: string, provider?: string) => {
         const { selectedModels } = get()
-        return selectedModels.some(sm => sm.model.id === modelId)
+        return selectedModels.some(sm => sm.model.id === modelId && (!provider || sm.provider === provider))
       },
 
       canAddMore: () => {

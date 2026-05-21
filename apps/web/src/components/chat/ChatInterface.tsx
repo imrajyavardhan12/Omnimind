@@ -8,6 +8,7 @@ import { motion } from "framer-motion"
 import { useState } from "react"
 import { useSettingsStore } from "@/lib/stores/settings"
 import { useModelTabsStore } from "@/lib/stores/modelTabs"
+import { useAvailableModels } from "@/features/models/hooks/useModels"
 import { SimplePromptEnhancer } from "./SimplePromptEnhancer"
 import { logger } from "@/lib/utils/logger"
 
@@ -22,15 +23,15 @@ export function ChatInterface() {
   const [isFocused, setIsFocused] = useState(false)
   const [input, setInput] = useState('')
   const { providers } = useSettingsStore()
-  const { selectedModels, addModel, getAllAvailableModels } = useModelTabsStore()
+  const { selectedModels, addModel } = useModelTabsStore()
   
-  // Get available models for the selector
-  const availableModels = getAllAvailableModels()
+  // Get available models for the selector from the server-owned catalog
+  const { models: availableModels } = useAvailableModels({ enabledOnly: true })
   const enabledProviders = Object.entries(providers)
-    .filter(([_, config]) => config.enabled)
+    .filter(([_, config]) => config.enabled && (config.apiKey || config.isFree))
     .map(([name, _]) => name)
   
-  // Filter models to only show those from enabled providers
+  // Filter models to only show those from enabled providers with usable access
   const enabledModels = availableModels.filter(model => 
     enabledProviders.includes(model.provider)
   )
@@ -246,9 +247,9 @@ export function ChatInterface() {
                 {/* Center model selector */}
                 <div className="flex items-center">
                   <Select 
-                    value={selectedModels[0]?.model.id || ''}
+                    value={selectedModels[0] ? `${selectedModels[0].model.provider}:${selectedModels[0].model.id}` : ''}
                     onValueChange={(value) => {
-                      const model = enabledModels.find(m => m.id === value)
+                      const model = enabledModels.find(m => `${m.provider}:${m.id}` === value)
                       if (model && selectedModels.length === 0) {
                         addModel(model)
                       }
@@ -262,11 +263,15 @@ export function ChatInterface() {
                     </SelectTrigger>
                     <SelectContent className="bg-zinc-900 z-30 border-[#3D3D3D] rounded-xl z-30">
                       {enabledModels.length > 0 ? (
-                        enabledModels.map(model => (
-                          <SelectItem key={model.id} value={model.id} className="text-white hover:bg-zinc-700 rounded-lg">
-                            {model.name}
-                          </SelectItem>
-                        ))
+                        enabledModels.map(model => {
+                          const modelKey = `${model.provider}:${model.id}`
+
+                          return (
+                            <SelectItem key={modelKey} value={modelKey} className="text-white hover:bg-zinc-700 rounded-lg">
+                              {model.name}
+                            </SelectItem>
+                          )
+                        })
                       ) : (
                         <SelectItem value="no-models" disabled className="text-zinc-500 rounded-lg">
                           Configure API keys first

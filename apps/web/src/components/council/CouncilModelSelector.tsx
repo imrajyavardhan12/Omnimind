@@ -1,14 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, X, Crown, Users, ChevronDown, Check, Search } from 'lucide-react'
-import { useCouncilStore } from '@/lib/stores/council'
-import { useModelTabsStore } from '@/lib/stores/modelTabs'
+import { getCouncilModelKey, useCouncilStore } from '@/lib/stores/council'
 import { useSettingsStore } from '@/lib/stores/settings'
+import { useAvailableModels } from '@/features/models/hooks/useModels'
 import { Model } from '@/lib/types'
 import { Portal } from '@/components/ui/portal'
-import { getProviderIcon } from '@/components/ui/provider-icons'
+import { getProviderIcon, getProviderDisplayName } from '@/components/ui/provider-icons'
 import { cn } from '@/lib/utils'
 
 interface CouncilModelSelectorProps {
@@ -21,14 +21,13 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('')
   
   const { councilModels, chairmanModel, addCouncilModel, removeCouncilModel, setChairmanModel } = useCouncilStore()
-  const { getAllAvailableModels } = useModelTabsStore()
   const { providers, getApiKey } = useSettingsStore()
+  const { models: catalogModels } = useAvailableModels({ enabledOnly: true })
   
-  // Get available models from enabled providers
-  const availableModels = getAllAvailableModels().filter(model => {
+  const availableModels = useMemo(() => catalogModels.filter(model => {
     const provider = providers[model.provider as keyof typeof providers]
     return provider?.enabled && (getApiKey(model.provider as any) || provider.isFree)
-  })
+  }), [catalogModels, providers, getApiKey])
 
   const getProviderColor = (provider: string) => {
     const colors: Record<string, string> = {
@@ -39,17 +38,6 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
       'openrouter': 'bg-purple-500'
     }
     return colors[provider] || 'bg-gray-500'
-  }
-
-  const getProviderDisplayName = (provider: string) => {
-    switch (provider) {
-      case 'openai': return 'OpenAI'
-      case 'anthropic': return 'Anthropic'
-      case 'gemini': return 'Google Gemini'
-      case 'google-ai-studio': return 'Google AI Studio'
-      case 'openrouter': return 'OpenRouter'
-      default: return provider
-    }
   }
 
   const handleAddModel = (model: Model) => {
@@ -73,7 +61,7 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
   }
 
   const modelsNotInCouncil = availableModels.filter(
-    m => !councilModels.find(cm => cm.id === m.id)
+    m => !councilModels.find(cm => getCouncilModelKey(cm) === getCouncilModelKey(m))
   )
 
   const filteredModels = modelsNotInCouncil.filter(m => 
@@ -106,37 +94,37 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
         {/* Selected Models */}
         <div className="flex flex-wrap gap-2">
           <AnimatePresence>
-            {councilModels.map((model) => (
-              <motion.div
-                key={model.id}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className={cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg border",
-                  chairmanModel?.id === model.id 
-                    ? "bg-primary/10 border-primary/50" 
-                    : "bg-muted/30 border-border"
-                )}
-              >
-                <div className={cn("w-2 h-2 rounded-full", getProviderColor(model.provider))} />
-                <span className="text-sm font-medium">{model.name}</span>
-                {chairmanModel?.id === model.id && (
-                  <Crown className="w-3 h-3 text-primary" />
-                )}
-                <button
-                  onClick={() => {
-                    removeCouncilModel(model.id)
-                    if (chairmanModel?.id === model.id) {
-                      setChairmanModel(councilModels.find(m => m.id !== model.id) || null)
-                    }
-                  }}
-                  className="ml-1 p-0.5 rounded hover:bg-muted"
+            {councilModels.map((model) => {
+              const modelKey = getCouncilModelKey(model)
+              const isChairman = chairmanModel ? getCouncilModelKey(chairmanModel) === modelKey : false
+
+              return (
+                <motion.div
+                  key={modelKey}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg border",
+                    isChairman
+                      ? "bg-primary/10 border-primary/50"
+                      : "bg-muted/30 border-border"
+                  )}
                 >
-                  <X className="w-3 h-3 text-muted-foreground" />
-                </button>
-              </motion.div>
-            ))}
+                  <div className={cn("w-2 h-2 rounded-full", getProviderColor(model.provider))} />
+                  <span className="text-sm font-medium">{model.name}</span>
+                  {isChairman && (
+                    <Crown className="w-3 h-3 text-primary" />
+                  )}
+                  <button
+                    onClick={() => removeCouncilModel(modelKey)}
+                    className="ml-1 p-0.5 rounded hover:bg-muted"
+                  >
+                    <X className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                </motion.div>
+              )
+            })}
           </AnimatePresence>
 
           {/* Add Model Button */}
@@ -258,7 +246,7 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {models.map((model) => (
                             <div
-                              key={model.id}
+                              key={getCouncilModelKey(model)}
                               className="p-4 border border-border rounded-lg hover:border-primary/50 hover:bg-accent/50 cursor-pointer transition-all"
                               onClick={() => handleAddModel(model)}
                             >
@@ -327,33 +315,38 @@ export function CouncilModelSelector({ className }: CouncilModelSelectorProps) {
               {/* Model List */}
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-2">
-                  {councilModels.map((model) => (
-                    <div
-                      key={model.id}
-                      onClick={() => handleSetChairman(model)}
-                      className={cn(
-                        "p-4 border rounded-lg cursor-pointer transition-all",
-                        chairmanModel?.id === model.id 
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/50 hover:bg-accent/50"
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={cn("w-3 h-3 rounded-full", getProviderColor(model.provider))} />
-                          <div>
-                            <div className="font-medium">{model.name}</div>
-                            <div className="text-xs text-muted-foreground">{getProviderDisplayName(model.provider)}</div>
-                          </div>
-                        </div>
-                        {chairmanModel?.id === model.id && (
-                          <div className="p-1 rounded-full bg-primary text-primary-foreground">
-                            <Check className="w-4 h-4" />
-                          </div>
+                  {councilModels.map((model) => {
+                    const modelKey = getCouncilModelKey(model)
+                    const isChairman = chairmanModel ? getCouncilModelKey(chairmanModel) === modelKey : false
+
+                    return (
+                      <div
+                        key={modelKey}
+                        onClick={() => handleSetChairman(model)}
+                        className={cn(
+                          "p-4 border rounded-lg cursor-pointer transition-all",
+                          isChairman
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:border-primary/50 hover:bg-accent/50"
                         )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={cn("w-3 h-3 rounded-full", getProviderColor(model.provider))} />
+                            <div>
+                              <div className="font-medium">{model.name}</div>
+                              <div className="text-xs text-muted-foreground">{getProviderDisplayName(model.provider)}</div>
+                            </div>
+                          </div>
+                          {isChairman && (
+                            <div className="p-1 rounded-full bg-primary text-primary-foreground">
+                              <Check className="w-4 h-4" />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>

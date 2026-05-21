@@ -23,6 +23,36 @@ interface SettingsState {
   toggleProvider: (provider: ProviderName, enabled: boolean) => void
 }
 
+const defaultSelectedModels: Record<ProviderName, string> = {
+  openai: 'gpt-4o',
+  anthropic: 'claude-3-5-sonnet-20241022',
+  gemini: 'gemini-1.5-pro',
+  'google-ai-studio': 'gemini-2.0-flash',
+  openrouter: 'openai/gpt-4o'
+}
+
+const legacyModelReplacements: Partial<Record<ProviderName, Record<string, string>>> = {
+  openai: {
+    'gpt-4': 'gpt-4o'
+  },
+  openrouter: {
+    'openai/gpt-4': 'openai/gpt-4o'
+  }
+}
+
+function normalizeCatalogModelDefaults(
+  selectedModels: Partial<Record<ProviderName, string>> | undefined,
+): Record<ProviderName, string> {
+  const merged = { ...defaultSelectedModels, ...selectedModels }
+
+  return Object.fromEntries(
+    Object.entries(merged).map(([provider, modelId]) => {
+      const providerName = provider as ProviderName
+      return [providerName, legacyModelReplacements[providerName]?.[modelId] ?? modelId]
+    }),
+  ) as Record<ProviderName, string>
+}
+
 const defaultProviders: Record<ProviderName, ProviderConfig> = {
   openai: {
     name: 'OpenAI',
@@ -87,16 +117,10 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set, get) => ({
       providers: initializeProviders(),
-      selectedModels: {
-        openai: 'gpt-4',
-        anthropic: 'claude-3-5-sonnet-20241022',
-        gemini: 'gemini-1.5-pro',
-        'google-ai-studio': 'gemini-2.0-flash',
-        openrouter: 'openai/gpt-4'
-      },
+      selectedModels: defaultSelectedModels,
       temperature: 0.7,
-      maxTokens: 2048, // Increased from 1000 - good balance for most responses
-      messagesInContext: 0, // 0 = all messages
+      maxTokens: 2048,
+      messagesInContext: 0,
       responseLanguage: '', // empty = no preference
 
       setApiKey: (provider: ProviderName, apiKey: string) => {
@@ -179,21 +203,21 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'omnimind-settings',
-      version: 4, // Increased version for maxTokens increase
+      version: 5, // Increased version for API-backed model catalog defaults
       migrate: (persistedState: any, version: number) => {
         if (version === 0 || version === 1 || version === 2) {
           // Migrate from old version - ensure all providers exist and new fields are initialized
           return {
             ...persistedState,
             providers: initializeProviders(),
-            selectedModels: {
-              openai: 'gpt-4',
+            selectedModels: normalizeCatalogModelDefaults({
+              openai: 'gpt-4o',
               anthropic: 'claude-3-5-sonnet-20241022',
               gemini: 'gemini-1.5-pro',
               'google-ai-studio': 'gemini-2.0-flash',
-              openrouter: 'openai/gpt-4',
+              openrouter: 'openai/gpt-4o',
               ...persistedState.selectedModels
-            },
+            }),
             // Ensure new fields are initialized
             messagesInContext: persistedState.messagesInContext ?? 0,
             responseLanguage: persistedState.responseLanguage ?? '',
@@ -204,7 +228,14 @@ export const useSettingsStore = create<SettingsState>()(
           // Migrate from version 3 - upgrade maxTokens if still at old default
           return {
             ...persistedState,
+            selectedModels: normalizeCatalogModelDefaults(persistedState.selectedModels),
             maxTokens: persistedState.maxTokens === 1000 ? 2048 : persistedState.maxTokens
+          }
+        }
+        if (version === 4) {
+          return {
+            ...persistedState,
+            selectedModels: normalizeCatalogModelDefaults(persistedState.selectedModels)
           }
         }
         return persistedState

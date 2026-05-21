@@ -1,39 +1,24 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
-import { ProviderName, Model } from '@/lib/types'
+import { ProviderName } from '@/lib/types'
 import { useSettingsStore } from '@/lib/stores/settings'
+import { useAvailableModels } from '@/features/models/hooks/useModels'
 import { cn } from '@/lib/utils'
-
-// Import all verified models
-import { 
-  openaiVerifiedModels, 
-  anthropicVerifiedModels, 
-  geminiVerifiedModels,
-  googleAIStudioVerifiedModels,
-  openrouterVerifiedModels 
-} from '@/lib/models/verified-models'
 
 interface ModelSelectorProps {
   provider: ProviderName
   className?: string
 }
 
-const providerModels = {
-  openai: openaiVerifiedModels as Model[],
-  anthropic: anthropicVerifiedModels as Model[],
-  gemini: geminiVerifiedModels as Model[],
-  'google-ai-studio': googleAIStudioVerifiedModels as Model[],
-  openrouter: openrouterVerifiedModels as Model[]
-}
-
 export function ModelSelector({ provider, className }: ModelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { selectedModels, setSelectedModel } = useSettingsStore()
+  const { models: allModels, isLoading, error } = useAvailableModels({ enabledOnly: true })
+  const models = useMemo(() => allModels.filter(m => m.provider === provider), [allModels, provider])
   
-  const models = providerModels[provider]
   const selectedModelId = selectedModels[provider]
   const selectedModel = models.find(model => model.id === selectedModelId) || models[0]
 
@@ -60,10 +45,10 @@ export function ModelSelector({ provider, className }: ModelSelectorProps) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded transition-colors"
-        title={`Current model: ${selectedModel.name}`}
+        title={selectedModel ? `Current model: ${selectedModel.name}` : 'Select model'}
       >
         <span className="truncate max-w-[120px]">
-          {selectedModel.name}
+          {isLoading ? 'Loading models...' : selectedModel?.name ?? 'No models'}
         </span>
         <ChevronDown className={cn(
           'w-3 h-3 transition-transform',
@@ -81,6 +66,16 @@ export function ModelSelector({ provider, className }: ModelSelectorProps) {
           </div>
           
           <div className="py-1">
+            {error && (
+              <div className="px-3 py-2 text-xs text-destructive">
+                Failed to load models
+              </div>
+            )}
+            {!isLoading && !error && models.length === 0 && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                No catalog models found
+              </div>
+            )}
             {models.map((model) => (
               <button
                 key={model.id}

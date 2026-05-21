@@ -15,6 +15,13 @@
       "when": 1779330759695,
       "tag": "0001_complex_winter_soldier",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779336798020,
+      "tag": "0002_thick_stellaris",
+      "breakpoints": true
     }
   ]
 }

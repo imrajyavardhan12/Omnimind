@@ -20,3 +20,9 @@ export {
   upsertProviderKeySchema,
 } from "./api/provider-keys"
 export type { ProviderName, UpsertProviderKeyInput } from "./api/provider-keys"
+export {
+  modelCapabilitySchema,
+  listModelsQuerySchema,
+  modelCatalogEntrySchema,
+} from "./api/models"
+export type { ModelCapability, ListModelsQuery, ModelCatalogEntryResponse } from "./api/models"

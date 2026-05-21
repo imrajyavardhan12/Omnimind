@@ -15,8 +15,8 @@ import { FileUpload } from './FileUpload'
 import { MessageAttachments } from './MessageAttachments'
 import { MessageStats } from './MessageStats'
 import { useViewModeStore } from '@/lib/stores/viewMode'
-import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useSettingsStore } from '@/lib/stores/settings'
+import { useAvailableModels } from '@/features/models/hooks/useModels'
 import { useChatStore } from '@/lib/stores/chat'
 import { useChat } from '@/hooks/useChat'
 import { useIsClient } from '@/hooks/useIsClient'
@@ -37,16 +37,14 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
   const isClient = useIsClient()
 
   const { selectedSingleModel, setSelectedSingleModel, incrementModelUsage, viewMode, isHeaderVisible, setIsHeaderVisible, toggleHeaderVisibility } = useViewModeStore()
-  const { getAllAvailableModels } = useModelTabsStore()
   const { providers, getApiKey } = useSettingsStore()
+  const { models: catalogModels } = useAvailableModels({ enabledOnly: true })
   const { getActiveSession, createSession, activeSessionId, stopAllResponses } = useChatStore()
 
-  // Get available models from enabled providers
-  const availableModels = getAllAvailableModels().filter(model => {
+  const availableModels = useMemo(() => catalogModels.filter(model => {
     const provider = providers[model.provider as keyof typeof providers]
-    // Include if provider is enabled AND (has API key OR is free tier)
     return provider?.enabled && (getApiKey(model.provider as any) || provider.isFree)
-  })
+  }), [catalogModels, providers, getApiKey])
 
   // Auto-select most used model on first load
   useEffect(() => {
@@ -128,9 +126,6 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
     return () => window.removeEventListener('omnimind:auto-message', handleAutoMessage)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSingleModel])
-
-  // Use the shared toggle function from the store
-  const toggleHeader = toggleHeaderVisibility
 
   // Handle file upload
   const handleFilesSelected = (files: FileAttachment[]) => {
@@ -255,7 +250,7 @@ export function SingleChatInterface({ className }: SingleChatInterfaceProps) {
       {/* Header Toggle Button - Always visible */}
       <div className="relative z-10 flex justify-center py-2 border-b border-border/20 bg-background">
         <button
-          onClick={toggleHeader}
+          onClick={toggleHeaderVisibility}
           className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50"
         >
           {isHeaderVisible ? (

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Plus, Settings, Check, X } from 'lucide-react'
 import { useViewModeStore } from '@/lib/stores/viewMode'
-import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useSettingsStore } from '@/lib/stores/settings'
+import { useAvailableModels } from '@/features/models/hooks/useModels'
 import { ModelSelectionModal } from './ModelSelectionModal'
 import { cn } from '@/lib/utils'
 import { getProviderIcon } from '@/components/ui/provider-icons'
@@ -28,15 +28,15 @@ export function SingleModelSelector({ className }: SingleModelSelectorProps) {
   })
 
   const { selectedSingleModel, setSelectedSingleModel } = useViewModeStore()
-  const { getAllAvailableModels } = useModelTabsStore()
   const { providers, getApiKey } = useSettingsStore()
+  const { models: catalogModels } = useAvailableModels({ enabledOnly: true })
 
-  // Get available models from enabled providers
-  const availableModels = getAllAvailableModels().filter(model => {
+  // Get available models from the server-owned catalog and enabled providers
+  const availableModels = useMemo(() => catalogModels.filter(model => {
     const provider = providers[model.provider as keyof typeof providers]
     // Include if provider is enabled AND (has API key OR is free tier)
     return provider?.enabled && (getApiKey(model.provider as any) || provider.isFree)
-  })
+  }), [catalogModels, providers, getApiKey])
 
   const getProviderColor = (provider: string) => {
     switch (provider) {

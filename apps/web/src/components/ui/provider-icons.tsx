@@ -59,10 +59,21 @@ export function getProviderIcon(provider: string, className?: string) {
     case 'gemini':
       return <GeminiIcon className={className} />
     case 'google-ai-studio':
-      return <GeminiIcon className={className} /> // Use Gemini logo for Google AI Studio
+      return <GeminiIcon className={className} />
     case 'openrouter':
       return <OpenRouterIcon className={className} />
     default:
       return <div className={`${className} bg-gray-300 rounded`} />
+  }
+}
+
+export function getProviderDisplayName(provider: string): string {
+  switch (provider) {
+    case 'openai': return 'OpenAI'
+    case 'anthropic': return 'Anthropic'
+    case 'gemini': return 'Google Gemini'
+    case 'google-ai-studio': return 'Google AI Studio'
+    case 'openrouter': return 'OpenRouter'
+    default: return provider
   }
 }

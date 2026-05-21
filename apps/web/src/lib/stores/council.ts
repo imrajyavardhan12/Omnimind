@@ -3,7 +3,12 @@ import { Model } from '../types'
 
 export type CouncilStage = 'idle' | 'stage1' | 'stage2' | 'stage3' | 'complete'
 
+export function getCouncilModelKey(model: Pick<Model, 'provider' | 'id'>): string {
+  return `${model.provider}:${model.id}`
+}
+
 export interface CouncilResponse {
+  // Composite provider:model id. Model ids are only unique within a provider.
   modelId: string
   modelName: string
   provider: string
@@ -59,7 +64,7 @@ interface CouncilState {
   // Actions
   setCouncilModels: (models: Model[]) => void
   addCouncilModel: (model: Model) => void
-  removeCouncilModel: (modelId: string) => void
+  removeCouncilModel: (modelKey: string) => void
   setChairmanModel: (model: Model | null) => void
   
   // Session actions
@@ -99,15 +104,24 @@ export const useCouncilStore = create<CouncilState>()((set, get) => ({
 
   addCouncilModel: (model: Model) => {
     const current = get().councilModels
-    if (!current.find(m => m.id === model.id)) {
+    const modelKey = getCouncilModelKey(model)
+    if (!current.find(m => getCouncilModelKey(m) === modelKey)) {
       set({ councilModels: [...current, model] })
     }
   },
 
-  removeCouncilModel: (modelId: string) => {
-    set(state => ({
-      councilModels: state.councilModels.filter(m => m.id !== modelId)
-    }))
+  removeCouncilModel: (modelKey: string) => {
+    set(state => {
+      const councilModels = state.councilModels.filter(m => getCouncilModelKey(m) !== modelKey)
+      const chairmanRemoved = state.chairmanModel
+        ? getCouncilModelKey(state.chairmanModel) === modelKey
+        : false
+
+      return {
+        councilModels,
+        chairmanModel: chairmanRemoved ? councilModels[0] ?? null : state.chairmanModel,
+      }
+    })
   },
 
   setChairmanModel: (model: Model | null) => {
@@ -125,7 +139,7 @@ export const useCouncilStore = create<CouncilState>()((set, get) => ({
       chairmanModel,
       stage: 'stage1',
       stage1Responses: councilModels.map(model => ({
-        modelId: model.id,
+        modelId: getCouncilModelKey(model),
         modelName: model.name,
         provider: model.provider,
         response: '',

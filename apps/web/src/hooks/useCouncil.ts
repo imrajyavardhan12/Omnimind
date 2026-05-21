@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { useCouncilStore, AggregateRanking } from '@/lib/stores/council'
+import { useCouncilStore, AggregateRanking, getCouncilModelKey } from '@/lib/stores/council'
 import { useSettingsStore } from '@/lib/stores/settings'
 import { Model, ProviderName } from '@/lib/types'
 import { logger } from '@/lib/utils/logger'
@@ -73,8 +73,9 @@ export function useCouncil() {
     logger.debug('Starting Stage 1: Individual Opinions')
     
     const promises = councilModels.map(async (model) => {
+      const modelKey = getCouncilModelKey(model)
       const abortController = new AbortController()
-      setAbortController(`stage1-${model.id}`, abortController)
+      setAbortController(`stage1-${modelKey}`, abortController)
       
       try {
         const response = await queryModel(
@@ -83,21 +84,21 @@ export function useCouncil() {
           abortController.signal
         )
         
-        updateStage1Response(model.id, {
+        updateStage1Response(modelKey, {
           response,
           isLoading: false
         })
         
-        return { modelId: model.id, response, success: true }
+        return { modelId: modelKey, response, success: true }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        updateStage1Response(model.id, {
+        updateStage1Response(modelKey, {
           error: errorMessage,
           isLoading: false
         })
-        return { modelId: model.id, error: errorMessage, success: false }
+        return { modelId: modelKey, error: errorMessage, success: false }
       } finally {
-        setAbortController(`stage1-${model.id}`, null)
+        setAbortController(`stage1-${modelKey}`, null)
       }
     })
 
@@ -140,12 +141,13 @@ FINAL RANKING:
 Provide your evaluation:`
 
     const promises = councilModels.map(async (model) => {
+      const modelKey = getCouncilModelKey(model)
       const abortController = new AbortController()
-      setAbortController(`stage2-${model.id}`, abortController)
+      setAbortController(`stage2-${modelKey}`, abortController)
       
       // Initialize ranking entry
       addStage2Ranking({
-        reviewerModelId: model.id,
+        reviewerModelId: modelKey,
         reviewerModelName: model.name,
         rankings: [],
         evaluation: '',
@@ -162,22 +164,22 @@ Provide your evaluation:`
         // Parse rankings from response
         const rankings = parseRankings(evaluation, labels, stage1Responses)
         
-        updateStage2Ranking(model.id, {
+        updateStage2Ranking(modelKey, {
           rankings,
           evaluation,
           isLoading: false
         })
         
-        return { reviewerModelId: model.id, rankings, success: true }
+        return { reviewerModelId: modelKey, rankings, success: true }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        updateStage2Ranking(model.id, {
+        updateStage2Ranking(modelKey, {
           error: errorMessage,
           isLoading: false
         })
-        return { reviewerModelId: model.id, error: errorMessage, success: false }
+        return { reviewerModelId: modelKey, error: errorMessage, success: false }
       } finally {
-        setAbortController(`stage2-${model.id}`, null)
+        setAbortController(`stage2-${modelKey}`, null)
       }
     })
 
@@ -286,7 +288,7 @@ Provide your synthesized answer:`
       
       // Stage 3
       const stage1WithNames = successfulResponses.map(r => {
-        const model = councilModels.find(m => m.id === r.modelId)
+        const model = councilModels.find(m => getCouncilModelKey(m) === r.modelId)
         return {
           ...r,
           modelName: model?.name || r.modelId
@@ -381,7 +383,7 @@ function calculateAggregateRankings(
   const { councilModels } = useCouncilStore.getState()
   
   return Object.entries(aggregates).map(([modelId, data]) => {
-    const model = councilModels.find(m => m.id === modelId)
+    const model = councilModels.find(m => getCouncilModelKey(m) === modelId)
     return {
       modelId,
       modelName: model?.name || modelId,

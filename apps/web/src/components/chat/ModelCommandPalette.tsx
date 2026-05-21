@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { Command } from 'cmdk'
-import { X, Search } from 'lucide-react'
+import { X, Search, Loader2, AlertCircle } from 'lucide-react'
 import { Model, ProviderName } from '@/lib/types'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useSettingsStore } from '@/lib/stores/settings'
-import { getProviderIcon } from '@/components/ui/provider-icons'
+import { useViewModeStore } from '@/lib/stores/viewMode'
+import { getProviderIcon, getProviderDisplayName } from '@/components/ui/provider-icons'
 import { ModelBadges } from './ModelBadges'
 import { cn } from '@/lib/utils'
 import { Portal } from '@/components/ui/portal'
-import { VerifiedModel, getVerifiedModels } from '@/lib/models/verified-models'
+import type { VerifiedModel } from '@/lib/models/verified-models'
+import { useAvailableModels } from '@/features/models/hooks/useModels'
 
 interface ModelCommandPaletteProps {
   isOpen: boolean
@@ -26,14 +28,17 @@ export function ModelCommandPalette({
   singleMode = false 
 }: ModelCommandPaletteProps) {
   const [search, setSearch] = useState('')
-  const { getAllAvailableModels, addModel, isModelSelected, canAddMore } = useModelTabsStore()
+  const { addModel, isModelSelected, canAddMore, selectedModels } = useModelTabsStore()
+  const { setSelectedSingleModel } = useViewModeStore()
   const { providers } = useSettingsStore()
-
-  // Get all available models
-  const allModels = getAllAvailableModels()
+  const { models: allModels, isLoading, error } = useAvailableModels({ enabledOnly: true })
+  const accessibleModels = allModels.filter((model) => {
+    const providerConfig = providers[model.provider as ProviderName]
+    return Boolean(providerConfig?.enabled && (providerConfig?.apiKey || providerConfig?.isFree))
+  })
 
   // Group models by provider
-  const modelsByProvider = allModels.reduce((acc, model) => {
+  const modelsByProvider = accessibleModels.reduce((acc, model) => {
     if (!acc[model.provider]) {
       acc[model.provider] = []
     }
@@ -41,21 +46,15 @@ export function ModelCommandPalette({
     return acc
   }, {} as Record<string, Model[]>)
 
-  const getProviderDisplayName = (provider: string) => {
-    switch (provider) {
-      case 'openai': return 'OpenAI'
-      case 'anthropic': return 'Anthropic'
-      case 'gemini': return 'Google Gemini'
-      case 'openrouter': return 'OpenRouter'
-      default: return provider
-    }
-  }
-
   const handleSelectModel = (model: Model) => {
     if (singleMode) {
-      onModelSelect?.(model)
+      if (onModelSelect) {
+        onModelSelect(model)
+      } else {
+        setSelectedSingleModel(model)
+      }
     } else {
-      if (!isModelSelected(model.id) && canAddMore()) {
+      if (!isModelSelected(model.id, model.provider) && canAddMore()) {
         addModel(model)
       }
     }
@@ -107,13 +106,28 @@ export function ModelCommandPalette({
 
           {/* Results */}
           <Command.List className="flex-1 overflow-y-auto p-2">
-            <Command.Empty className="py-12 text-center text-sm text-muted-foreground">
-              No models found
-            </Command.Empty>
+            {isLoading && (
+              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading model catalog...
+              </div>
+            )}
 
-            {Object.entries(modelsByProvider).map(([provider, models]) => {
-              const hasApiKey = providers[provider as ProviderName]?.apiKey
-              if (!hasApiKey) return null
+            {error && (
+              <div className="m-2 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="w-4 h-4" />
+                Failed to load model catalog.
+              </div>
+            )}
+
+            {!isLoading && !error && accessibleModels.length === 0 && (
+              <div className="py-12 text-center text-sm text-muted-foreground">
+                No models found
+              </div>
+            )}
+
+            {!isLoading && !error && Object.entries(modelsByProvider).map(([provider, models]) => {
+              const providerConfig = providers[provider as ProviderName]
 
               // Filter models based on search
               const filteredModels = models.filter(model =>
@@ -142,9 +156,9 @@ export function ModelCommandPalette({
                 >
                   {filteredModels.map((model) => {
                     const verifiedModel = model as VerifiedModel
-                    const selected = !singleMode && isModelSelected(model.id)
+                    const selected = !singleMode && isModelSelected(model.id, model.provider)
                     const canAdd = singleMode || canAddMore() || selected
-                    const isFree = model.inputCost === 0 && model.outputCost === 0
+                    const isFree = Boolean(providerConfig?.isFree) || (model.inputCost === 0 && model.outputCost === 0)
 
                     return (
                       <Command.Item
@@ -224,7 +238,7 @@ export function ModelCommandPalette({
               </div>
               {!singleMode && (
                 <span>
-                  {allModels.filter(m => isModelSelected(m.id)).length} / 5 selected
+                  {selectedModels.length} / 5 selected
                 </span>
               )}
             </div>
