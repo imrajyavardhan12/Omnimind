@@ -2,13 +2,27 @@
   "name": "@omnimind/ai",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.78",
+    "@ai-sdk/google": "^3.0.78",
+    "@ai-sdk/openai": "^3.0.64",
+    "@ai-sdk/openai-compatible": "^2.0.47",
+    "@omnimind/db": "workspace:*",
+    "@omnimind/types": "workspace:*",
+    "ai": "^6.0.188"
   },
   "devDependencies": {
-    "typescript": "^5"
+    "@types/node": "^20",
+    "typescript": "^5",
+    "vitest": "^4.1.7"
   }
 }

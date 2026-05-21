@@ -26,3 +26,21 @@ export {
   modelCatalogEntrySchema,
 } from "./api/models"
 export type { ModelCapability, ListModelsQuery, ModelCatalogEntryResponse } from "./api/models"
+export {
+  gatewayMessageRoleSchema,
+  gatewayMessageSchema,
+  gatewayRequestSchema,
+  gatewayErrorCodeSchema,
+  gatewayErrorSchema,
+  normalizedUsageSchema,
+  gatewayStreamChunkSchema,
+} from "./api/llm-gateway"
+export type {
+  GatewayMessageRole,
+  GatewayMessage,
+  GatewayRequestInput,
+  GatewayErrorCode,
+  GatewayError,
+  NormalizedUsage,
+  GatewayStreamChunk,
+} from "./api/llm-gateway"
