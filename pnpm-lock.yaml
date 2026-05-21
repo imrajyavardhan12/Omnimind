@@ -161,7 +161,7 @@ importers:
         specifier: 14.2.15
         version: 14.2.15(eslint@8.57.1)(typescript@5.9.3)
       postcss:
-        specifier: ^8
+        specifier: ^8.5.15
         version: 8.5.15
       tailwindcss:
         specifier: ^3.4.1
