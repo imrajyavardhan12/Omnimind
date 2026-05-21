@@ -31,7 +31,7 @@ app.use(
 
 app.route("/health", healthRouter)
 
-const authMiddleware = createAuthMiddleware(env.CLERK_SECRET_KEY)
+const authMiddleware = createAuthMiddleware(env.CLERK_SECRET_KEY, [env.ALLOWED_ORIGIN])
 const workspaceMiddleware = createWorkspaceMiddleware(db, env.CLERK_SECRET_KEY)
 
 const v1 = new Hono<{ Variables: ApiVariables }>()

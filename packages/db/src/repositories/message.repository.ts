@@ -1,15 +1,15 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import type { Db } from '../client.js'
 import { messages, type Message, type NewMessage } from '../schema/index.js'
 
 export class MessageRepository {
   constructor(private readonly db: Db) {}
 
-  async findByConversation(conversationId: string, limit = 200): Promise<Message[]> {
+  async findByConversation(conversationId: string, workspaceId: string, limit = 200): Promise<Message[]> {
     return this.db
       .select()
       .from(messages)
-      .where(eq(messages.conversationId, conversationId))
+      .where(and(eq(messages.conversationId, conversationId), eq(messages.workspaceId, workspaceId)))
       .orderBy(asc(messages.createdAt))
       .limit(limit)
   }

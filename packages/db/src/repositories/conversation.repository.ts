@@ -43,7 +43,7 @@ export class ConversationRepository {
     const rows = await this.db
       .update(conversations)
       .set({ ...patch, updatedAt: new Date() })
-      .where(and(eq(conversations.id, id), eq(conversations.workspaceId, workspaceId)))
+      .where(and(eq(conversations.id, id), eq(conversations.workspaceId, workspaceId), ne(conversations.status, 'deleted')))
       .returning()
     return rows[0]
   }

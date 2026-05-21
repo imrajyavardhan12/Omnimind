@@ -4,10 +4,8 @@ import { ConversationRepository, MessageRepository } from '@omnimind/db'
 import { createMessageSchema, listMessagesQuerySchema } from '@omnimind/types'
 import type { ApiVariables } from '../types.js'
 
-type MessageRouteEnv = { Variables: ApiVariables; Params: { conversationId: string } }
-
 export function createMessagesRouter(db: Db) {
-  const router = new Hono<MessageRouteEnv>()
+  const router = new Hono<{ Variables: ApiVariables }>()
 
   router.get('/', async (c) => {
     const rid = c.get('requestId')
@@ -26,7 +24,7 @@ export function createMessagesRouter(db: Db) {
     }
 
     const msgRepo = new MessageRepository(db)
-    const items = await msgRepo.findByConversation(conversationId, query.data.limit)
+    const items = await msgRepo.findByConversation(conversationId, c.get('workspaceId'), query.data.limit)
     return c.json({ messages: items })
   })
 
