@@ -11,18 +11,24 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(
+export async function apiFetchRaw(
   path: string,
   options: RequestInit & { token?: string } = {},
-): Promise<T> {
+): Promise<Response> {
   const { token, ...init } = options
   const headers = new Headers(init.headers)
   headers.set('Content-Type', 'application/json')
   if (token) {
     headers.set('Authorization', `Bearer ${token}`)
   }
+  return fetch(`${API_URL}${path}`, { ...init, headers })
+}
 
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers })
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit & { token?: string } = {},
+): Promise<T> {
+  const res = await apiFetchRaw(path, options)
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: { code: 'INTERNAL_ERROR', message: res.statusText } }))
     throw new ApiError(

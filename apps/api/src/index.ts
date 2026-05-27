@@ -8,6 +8,7 @@ import { createConversationsRouter } from "./routes/conversations.js"
 import { createMessagesRouter } from "./routes/messages.js"
 import { createProviderKeysRouter } from "./routes/provider-keys.js"
 import { createModelsRouter } from "./routes/models.js"
+import { createChatStreamRouter } from "./routes/chat-stream.js"
 import { createAuthMiddleware } from "./middleware/auth.js"
 import { createWorkspaceMiddleware } from "./middleware/workspace.js"
 import { requestIdMiddleware } from "./middleware/request-id.js"
@@ -42,6 +43,7 @@ v1.route("/conversations", createConversationsRouter(db))
 v1.route("/conversations/:conversationId/messages", createMessagesRouter(db))
 v1.route("/provider-keys", createProviderKeysRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET))
 v1.route("/models", createModelsRouter(db))
+v1.route("/chat/stream", createChatStreamRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET))
 
 app.route("/v1", v1)
 

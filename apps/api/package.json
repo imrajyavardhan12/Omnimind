@@ -7,11 +7,13 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@clerk/backend": "^1.25.8",
     "@hono/node-server": "^1.13.8",
+    "@omnimind/ai": "workspace:*",
     "@omnimind/config": "workspace:*",
     "@omnimind/db": "workspace:*",
     "@omnimind/types": "workspace:*",
@@ -20,6 +22,7 @@
   "devDependencies": {
     "@types/node": "^20",
     "tsx": "^4.19.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.7"
   }
 }

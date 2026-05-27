@@ -23,6 +23,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.8
         version: 1.19.14(hono@4.12.21)
+      '@omnimind/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@omnimind/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -45,6 +48,9 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.7
+        version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@1.21.7)(tsx@4.22.3))
 
   apps/web:
     dependencies:
@@ -169,6 +175,9 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.7
+        version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(vite@8.0.14(@types/node@20.19.41)(esbuild@0.28.0)(jiti@1.21.7)(tsx@4.22.3))
 
   apps/worker:
     devDependencies:
