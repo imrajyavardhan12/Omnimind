@@ -1,4 +1,5 @@
 export { createDb, type Db } from './client.js'
+export { isUniqueViolation } from './errors.js'
 export * from './schema/index.js'
 export { UserRepository } from './repositories/user.repository.js'
 export { WorkspaceRepository } from './repositories/workspace.repository.js'
@@ -14,6 +15,8 @@ export type { ChatModelRunUpdateFields } from './repositories/chat-model-run.rep
 export { ChatRunEventRepository } from './repositories/chat-run-event.repository.js'
 export { UsageLedgerRepository } from './repositories/usage-ledger.repository.js'
 export type { UsageLedgerFilters } from './repositories/usage-ledger.repository.js'
+export { ChatRunWriteRepository } from './repositories/chat-run-write.repository.js'
+export type { ChatModelRunCompletionFields } from './repositories/chat-run-write.repository.js'
 export { ModelCatalogService } from './services/model-catalog.service.js'
 export type {
   ModelCapability,

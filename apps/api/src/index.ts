@@ -9,13 +9,16 @@ import { createMessagesRouter } from "./routes/messages.js"
 import { createProviderKeysRouter } from "./routes/provider-keys.js"
 import { createModelsRouter } from "./routes/models.js"
 import { createChatStreamRouter } from "./routes/chat-stream.js"
+import { createChatRunsRouter } from "./routes/chat-runs.js"
 import { createAuthMiddleware } from "./middleware/auth.js"
 import { createWorkspaceMiddleware } from "./middleware/workspace.js"
 import { requestIdMiddleware } from "./middleware/request-id.js"
+import { RunCoordinator } from "./services/run-coordinator.js"
 import type { ApiVariables } from "./types.js"
 
 const env = parseApiEnv()
 const db = createDb(env.DATABASE_URL)
+const runCoordinator = new RunCoordinator()
 
 const app = new Hono<{ Variables: ApiVariables }>()
 
@@ -44,6 +47,7 @@ v1.route("/conversations/:conversationId/messages", createMessagesRouter(db))
 v1.route("/provider-keys", createProviderKeysRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET))
 v1.route("/models", createModelsRouter(db))
 v1.route("/chat/stream", createChatStreamRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET))
+v1.route("/chat/runs", createChatRunsRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET, runCoordinator))
 
 app.route("/v1", v1)
 

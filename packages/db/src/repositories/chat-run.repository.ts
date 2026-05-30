@@ -55,6 +55,18 @@ export class ChatRunRepository {
     return rows[0]
   }
 
+  /**
+   * Release a run's idempotency key (set it to NULL) so a retry can claim it.
+   * Postgres treats NULLs as distinct in the unique index, so nulling frees the
+   * key while preserving the original (e.g. failed) run for audit.
+   */
+  async releaseIdempotencyKey(id: string): Promise<void> {
+    await this.db
+      .update(chatRuns)
+      .set({ idempotencyKey: null, updatedAt: new Date() })
+      .where(eq(chatRuns.id, id))
+  }
+
   async findByConversation(
     conversationId: string,
     limit = 50,
