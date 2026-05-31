@@ -20,6 +20,8 @@ import { OnboardingModal } from '@/components/OnboardingModal'
 import { UrlHashMessageHandler } from '@/components/chat/UrlHashMessageHandler'
 import { ModelCommandPalette } from '@/components/chat/ModelCommandPalette'
 import { CouncilInterface } from '@/components/council'
+import { RunChatView } from '@/features/chat/components/RunChatView'
+import { chatRunsEnabled } from '@/lib/featureFlags'
 import { useModelTabsStore } from '@/lib/stores/modelTabs'
 import { useViewModeStore } from '@/lib/stores/viewMode'
 import { useChatStore } from '@/lib/stores/chat'
@@ -34,6 +36,9 @@ export default function Home() {
   const { isLoading, getActiveSession, createSession } = useChatStore()
   const { user } = useUser()
   const { signOut } = useClerk()
+
+  // M6: route single + compare chat through the backend run engine (feature-flagged).
+  const useRuns = chatRunsEnabled()
   
   // Check if user should see onboarding
   useEffect(() => {
@@ -231,7 +236,11 @@ export default function Home() {
                     transition={{ duration: 0.15 }}
                     className="h-full"
                   >
-                    <SingleChatInterface className="h-full" />
+                    {useRuns ? (
+                      <RunChatView mode="single" className="h-full" />
+                    ) : (
+                      <SingleChatInterface className="h-full" />
+                    )}
                   </motion.div>
                 ) : viewMode === 'council' ? (
                   /* Council Mode - LLM Debate */
@@ -255,6 +264,10 @@ export default function Home() {
                     transition={{ duration: 0.15 }}
                     className="relative h-full"
                   >
+                    {useRuns ? (
+                      <RunChatView mode="compare" className="h-full" />
+                    ) : (
+                    <>
                     {/* Collapsible Header with smoother animation */}
                     <AnimatePresence initial={false}>
                       {isHeaderVisible && (
@@ -359,6 +372,8 @@ export default function Home() {
                     <div className="absolute bottom-0 left-0 right-0 z-20">
                       <AnimatedUnifiedInput />
                     </div>
+                    </>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
