@@ -4,6 +4,7 @@ export default function SignUpPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <SignUp
+        routing="hash"
         appearance={{ elements: { rootBox: 'mx-auto' } }}
         redirectUrl="/chat"
         signInUrl="/auth/login"
