@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import {
   applyOutputMessageIds,
+  computeLivePanels,
   initialRunState,
   isRunTerminal,
   reduceStreamEvent,
   resolveModelText,
+  type ModelRunState,
+  type ReconcilableMessage,
   type RunState,
 } from '../runState'
 import type { RunStreamEnvelope } from '../sseClient'
@@ -139,5 +142,57 @@ describe('resolveModelText', () => {
   it('falls back to the buffer when no persisted message exists yet', () => {
     expect(resolveModelText(null, 'streamed')).toBe('streamed')
     expect(resolveModelText(undefined, 'streamed')).toBe('streamed')
+  })
+})
+
+describe('computeLivePanels', () => {
+  function model(modelRunId: string, over: Partial<ModelRunState> = {}): ModelRunState {
+    return { modelRunId, status: 'completed', buffer: '', provider: 'openrouter', model: 'openai/gpt-4o', ...over }
+  }
+  function msg(id: string, over: Partial<ReconcilableMessage> = {}): ReconcilableMessage {
+    return { id, role: 'assistant', modelRunId: null, provider: 'openrouter', model: 'openai/gpt-4o', ...over }
+  }
+
+  it('keeps a panel live while no persisted message exists yet', () => {
+    const mr = model('mr1', { status: 'running', buffer: 'streaming…' })
+    const panels = computeLivePanels(['mr1'], { mr1: mr }, [])
+    expect(panels).toEqual([mr])
+  })
+
+  it('drops a panel once its persisted message (matched by modelRunId) is in history', () => {
+    const mr = model('mr1')
+    const messages = [msg('umsg', { role: 'user', modelRunId: null }), msg('amsg', { modelRunId: 'mr1' })]
+    expect(computeLivePanels(['mr1'], { mr1: mr }, messages)).toEqual([])
+  })
+
+  it('does NOT collide with a prior turn to the same provider+model (the vanish bug)', () => {
+    // History already holds turn 1's assistant message (different modelRunId).
+    // Turn 2's panel must stay live until ITS OWN message is persisted.
+    const turn2 = model('mr2', { buffer: 'turn 2 streamed text' })
+    const history = [msg('a1', { modelRunId: 'mr1' })] // prior turn, same model
+    expect(computeLivePanels(['mr2'], { mr2: turn2 }, history)).toEqual([turn2])
+
+    // Once turn 2's message lands (its own modelRunId), the panel drops.
+    const withTurn2 = [...history, msg('a2', { modelRunId: 'mr2' })]
+    expect(computeLivePanels(['mr2'], { mr2: turn2 }, withTurn2)).toEqual([])
+  })
+
+  it('keeps a failed panel live (no persisted message) so its error renders', () => {
+    const failed = model('mr1', { status: 'failed', error: { code: 'PROVIDER_KEY_MISSING', message: 'no key' } })
+    expect(computeLivePanels(['mr1'], { mr1: failed }, [])).toEqual([failed])
+  })
+
+  it('falls back to provider+model only for a completed message lacking a modelRunId', () => {
+    const mr = model('mr1')
+    const legacy = [msg('legacy', { modelRunId: null })] // no id to match exactly
+    expect(computeLivePanels(['mr1'], { mr1: mr }, legacy)).toEqual([])
+  })
+
+  it('preserves panel order and isolates compare partial failure', () => {
+    const ok = model('mrA', { provider: 'openrouter', model: 'openai/gpt-4o' })
+    const bad = model('mrB', { status: 'failed', provider: 'openai', model: 'gpt-4o', error: { code: 'X', message: 'y' } })
+    // ok's message persisted (by id); bad has none → only bad stays, order kept.
+    const messages = [msg('aOk', { modelRunId: 'mrA' })]
+    expect(computeLivePanels(['mrA', 'mrB'], { mrA: ok, mrB: bad }, messages)).toEqual([bad])
   })
 })

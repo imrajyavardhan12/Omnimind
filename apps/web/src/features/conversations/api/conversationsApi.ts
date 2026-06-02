@@ -18,6 +18,18 @@ export interface MessageDto {
   contentText: string
   provider: string | null
   model: string | null
+  /**
+   * The chat_model_run that produced this assistant message (null for user
+   * messages). The API already returns it (messages repo selects all columns);
+   * the run view uses it to match a live panel to its persisted message EXACTLY,
+   * so a second turn to the same provider+model can't collide with a prior
+   * turn's message. See `computeLivePanels`.
+   */
+  modelRunId: string | null
+  /** Model-run usage/cost/latency for assistant messages (null for user messages). */
+  totalTokens: number | null
+  costUsd: string | null
+  latencyMs: number | null
   createdAt: string
 }
 

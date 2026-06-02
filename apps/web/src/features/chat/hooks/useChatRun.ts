@@ -117,6 +117,47 @@ export function useChatRun(): UseChatRunResult {
     [getToken, queryClient],
   )
 
+  // The stream ended WITHOUT a terminal event (orphaned run after an API
+  // restart, a dropped/unpersisted terminal event, or exhausted reconnects).
+  // Never leave the run stuck 'active' (spinner forever, composer blocked): ask
+  // the server for the authoritative status. If it is terminal, adopt it and
+  // reconcile; if it is still running server-side but we can no longer stream,
+  // surface a disconnect the user can move past instead of a dead spinner.
+  const finalize = useCallback(
+    async (runId: string, conversationId: string, myToken: number) => {
+      let serverStatus: ChatRunStatus | undefined
+      try {
+        const token = await getToken()
+        if (token) {
+          const { run, modelRuns } = await chatApi.getRun(runId, token)
+          serverStatus = run.status
+          const map: Record<string, string> = {}
+          for (const mr of modelRuns) {
+            if (mr.outputMessageId) map[mr.id] = mr.outputMessageId
+          }
+          dispatch({ kind: 'outputs', map })
+        }
+      } catch {
+        // fall through to the disconnect path
+      }
+      // getToken + getRun take time (only reached after exhausted reconnects):
+      // a new run may have started meanwhile. Don't clobber it — every other
+      // post-await dispatch in this hook is guarded the same way.
+      if (runTokenRef.current !== myToken) return
+      if (serverStatus && isRunTerminal(serverStatus)) {
+        dispatch({ kind: 'setPhase', phase: serverStatus })
+      } else {
+        dispatch({
+          kind: 'fail',
+          code: 'STREAM_DISCONNECTED',
+          message: 'Lost connection to the run. It may still be processing — refresh to check.',
+        })
+      }
+      await queryClient.invalidateQueries({ queryKey: messageKeys.list(conversationId) })
+    },
+    [getToken, queryClient],
+  )
+
   const consume = useCallback(
     async (runId: string, conversationId: string, myToken: number) => {
       let afterSequence = 0
@@ -146,7 +187,7 @@ export function useChatRun(): UseChatRunResult {
         } catch {
           if (controller.signal.aborted || runTokenRef.current !== myToken) return
           if (++attempts > MAX_RECONNECTS) {
-            dispatch({ kind: 'fail', code: 'STREAM_ERROR', message: 'Lost connection to run stream' })
+            await finalize(runId, conversationId, myToken)
             return
           }
           await delay(RECONNECT_DELAY_MS)
@@ -186,11 +227,14 @@ export function useChatRun(): UseChatRunResult {
           return
         }
         if (controller.signal.aborted) return // cancelled/reset elsewhere
-        if (++attempts > MAX_RECONNECTS) return
+        if (++attempts > MAX_RECONNECTS) {
+          await finalize(runId, conversationId, myToken)
+          return
+        }
         await delay(RECONNECT_DELAY_MS)
       }
     },
-    [getToken, reconcile],
+    [getToken, reconcile, finalize],
   )
 
   const start = useCallback(

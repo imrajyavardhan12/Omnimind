@@ -220,6 +220,68 @@ export function resolveModelText(
   return persisted ? persisted.contentText : buffer
 }
 
+/** Minimal persisted-message shape needed to reconcile panels (a MessageDto subset). */
+export interface ReconcilableMessage {
+  id: string
+  role: string
+  modelRunId: string | null
+  provider: string | null
+  model: string | null
+}
+
+/**
+ * Decide which model-run panels are still "live" (rendered from the streaming
+ * buffer) vs. already persisted (rendered by the history list). A panel is
+ * dropped once its persisted assistant message is present in history.
+ *
+ * Matching is EXACT by `modelRunId`: each model run produces exactly one
+ * assistant message carrying that id, so a later turn to the same provider+model
+ * cannot collide with an earlier turn's message. (The previous greedy
+ * provider+model match did collide on multi-turn, hiding a panel against a prior
+ * turn's message and making the freshly streamed text vanish.)
+ *
+ * The provider+model fallback is retained ONLY for a completed run whose
+ * persisted message lacks a modelRunId (legacy/edge writes), scoped to unclaimed
+ * messages, so a missing id can't leave both the buffer and the message visible.
+ */
+export function computeLivePanels(
+  order: string[],
+  modelRuns: Record<string, ModelRunState>,
+  messages: ReconcilableMessage[],
+): ModelRunState[] {
+  const assistantMessages = messages.filter((m) => m.role === 'assistant')
+  const byModelRunId = new Map<string, ReconcilableMessage>()
+  for (const m of assistantMessages) {
+    if (m.modelRunId) byModelRunId.set(m.modelRunId, m)
+  }
+
+  const claimed = new Set<string>()
+  const panels: ModelRunState[] = []
+  for (const id of order) {
+    const mr = modelRuns[id]
+    if (!mr) continue
+
+    const exact = byModelRunId.get(mr.modelRunId)
+    if (exact) {
+      claimed.add(exact.id)
+      continue
+    }
+
+    if (mr.status === 'completed') {
+      const match = assistantMessages.find(
+        (m) => !m.modelRunId && !claimed.has(m.id) && m.provider === mr.provider && m.model === mr.model,
+      )
+      if (match) {
+        claimed.add(match.id)
+        continue
+      }
+    }
+
+    panels.push(mr)
+  }
+  return panels
+}
+
 export const RUN_TERMINAL_PHASES: ReadonlySet<RunPhase> = new Set<RunPhase>([
   'completed',
   'failed',
