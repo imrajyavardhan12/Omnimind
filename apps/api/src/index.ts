@@ -13,6 +13,7 @@ import { createAuthMiddleware } from "./middleware/auth.js"
 import { createWorkspaceMiddleware } from "./middleware/workspace.js"
 import { requestIdMiddleware } from "./middleware/request-id.js"
 import { RunCoordinator } from "./services/run-coordinator.js"
+import { CORS_ALLOW_HEADERS } from "./cors.js"
 import type { ApiVariables } from "./types.js"
 
 const env = parseApiEnv()
@@ -27,7 +28,7 @@ app.use(
   "*",
   cors({
     origin: env.ALLOWED_ORIGIN,
-    allowHeaders: ["Content-Type", "Authorization", "x-request-id"],
+    allowHeaders: [...CORS_ALLOW_HEADERS],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   }),
