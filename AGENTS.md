@@ -121,6 +121,7 @@ docs/adr/0001-dedicated-backend-orchestrator.md
 
 ```txt
 docs/architecture/06-frontend-architecture.md
+docs/architecture/06b-frontend-standards.md
 docs/architecture/09-streaming-protocol.md
 docs/architecture/11-api-design.md
 docs/architecture/22-product-ux-principles.md
