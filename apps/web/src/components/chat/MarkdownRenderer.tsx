@@ -3,7 +3,6 @@
 import { memo, useEffect, useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
 import { cn } from '@/lib/utils'
 import { Copy, Check } from 'lucide-react'
 
@@ -222,13 +221,10 @@ const preprocessContent = (content: string): string => {
 }
 
 export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererProps) => {
-  useEffect(() => {
-    // Ensure Prism is ready for syntax highlighting
-    if (typeof window !== 'undefined') {
-      // Re-highlight any code blocks that might have been added dynamically
-      Prism.highlightAll()
-    }
-  }, [content])
+  // NOTE: do NOT call Prism.highlightAll() here. It re-scans and re-highlights
+  // every code block in the whole document on each render — during token
+  // streaming that fires per delta and mutates DOM React owns, causing flicker
+  // and jank. Each CodeBlock highlights its own content locally instead.
 
   // Preprocess content to remove unwanted tags
   const cleanedContent = preprocessContent(content)
@@ -237,7 +233,6 @@ export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererPr
     <div className={cn("prose prose-sm max-w-none dark:prose-invert", className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
         components={{
           // Custom heading styles
           h1: ({ children }) => (
@@ -323,11 +318,17 @@ export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererPr
             </td>
           ),
 
-          // Custom inline code styles
+          // Custom inline code styles.
+          // react-markdown v10 removed the `inline` prop, so detect block vs
+          // inline ourselves: a fenced block tagged with a language has a
+          // `language-*` class; an untagged fenced block has no class but is
+          // multi-line. Inline code is single-line with no language class.
+          // (The old `!className` check rendered untagged ``` blocks as inline.)
           code: ({ className, children, ...props }: React.HTMLProps<HTMLElement> & { className?: string }) => {
-            const isInline = !className || !className.startsWith('language-')
-            
-            if (isInline) {
+            const hasLanguage = className?.startsWith('language-') ?? false
+            const isBlock = hasLanguage || String(children).includes('\n')
+
+            if (!isBlock) {
               return (
                 <code
                   className="bg-zinc-800 text-zinc-100 px-2 py-1 rounded-md text-sm font-mono border border-zinc-700"
@@ -337,7 +338,7 @@ export const MarkdownRenderer = memo(({ content, className }: MarkdownRendererPr
                 </code>
               )
             }
-            
+
             return <CodeBlock className={className}>{children}</CodeBlock>
           },
 
