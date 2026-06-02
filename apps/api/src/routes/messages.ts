@@ -24,7 +24,7 @@ export function createMessagesRouter(db: Db) {
     }
 
     const msgRepo = new MessageRepository(db)
-    const items = await msgRepo.findByConversation(conversationId, c.get('workspaceId'), query.data.limit)
+    const items = await msgRepo.findByConversationWithUsage(conversationId, c.get('workspaceId'), query.data.limit)
     return c.json({ messages: items })
   })
 
