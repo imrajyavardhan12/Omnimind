@@ -59,7 +59,7 @@ export function RunModelPanel({
   const cost = formatCost(modelRun.costUsd)
 
   return (
-    <div className={cn('flex flex-col rounded-2xl border border-border/40 bg-background p-4', className)}>
+    <div className={cn('flex flex-col rounded-xl border border-border/50 bg-background p-4', className)}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="min-w-0 truncate text-sm font-medium text-foreground">
           {modelRun.model ?? 'Model'}

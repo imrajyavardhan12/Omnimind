@@ -45,7 +45,7 @@ export function RunComposer({ onSubmit, onCancel, isActive, disabled, placeholde
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl rounded-2xl border border-border bg-background p-3 shadow-lg shadow-black/10">
+    <div className="mx-auto w-full max-w-3xl rounded-2xl border border-border/60 bg-background p-2.5 shadow-sm">
       <Textarea
         ref={textareaRef}
         value={input}

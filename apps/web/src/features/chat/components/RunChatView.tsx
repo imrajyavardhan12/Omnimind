@@ -123,11 +123,11 @@ export function RunChatView({ mode, className }: { mode: 'single' | 'compare'; c
           <RunModelPicker mode={mode} />
         </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto py-6">
         {messages.length === 0 && livePanels.length === 0 ? (
           <div className="flex h-full items-center justify-center text-center">
-            <div className="max-w-md space-y-2">
-              <h3 className="text-xl font-medium text-foreground">How can I help you today?</h3>
+            <div className="max-w-md space-y-3 px-4">
+              <h3 className="text-2xl font-semibold text-foreground">How can I help you today?</h3>
               <p className="text-sm text-muted-foreground">
                 {mode === 'compare'
                   ? 'Add 2–5 models, then ask once to compare responses.'
@@ -140,7 +140,7 @@ export function RunChatView({ mode, className }: { mode: 'single' | 'compare'; c
             <RunMessageList messages={messages} />
 
             {livePanels.length > 0 && (
-              <div className={cn('mx-auto grid w-full max-w-5xl gap-3 px-2', GRID_CLASS[Math.min(livePanels.length, 5)])}>
+              <div className={cn('mx-auto grid w-full gap-3 px-4', livePanels.length <= 1 ? 'max-w-3xl' : 'max-w-5xl', GRID_CLASS[Math.min(livePanels.length, 5)])}>
                 {livePanels.map((mr) => (
                   <RunModelPanel key={mr.modelRunId} modelRun={mr} persisted={null} />
                 ))}

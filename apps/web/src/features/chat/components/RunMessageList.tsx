@@ -2,7 +2,6 @@
 
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer'
 import type { MessageDto } from '@/features/conversations/api/conversationsApi'
-import { cn } from '@/lib/utils'
 
 function formatCost(costUsd: string | null): string | null {
   if (costUsd === null) return null
@@ -33,32 +32,29 @@ function MessageMetaFooter({ message }: { message: MessageDto }) {
  */
 export function RunMessageList({ messages }: { messages: MessageDto[] }) {
   return (
-    <div className="space-y-4">
-      {messages.map((message) => (
-        <div key={message.id} className="flex justify-center px-4">
-          <div
-            className={cn(
-              'w-full max-w-3xl rounded-2xl border p-4',
-              message.role === 'user' ? 'border-border/50 bg-muted/30' : 'border-border/30 bg-background',
-            )}
-          >
-            {message.role === 'assistant' && message.model && (
-              <div className="mb-1 text-xs text-muted-foreground">
+    <div className="mx-auto w-full max-w-3xl space-y-6 px-4">
+      {messages.map((message) =>
+        message.role === 'user' ? (
+          <div key={message.id} className="flex justify-end">
+            <div className="w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-md bg-primary/10 px-4 py-2.5 leading-relaxed text-foreground">
+              {message.contentText}
+            </div>
+          </div>
+        ) : (
+          <div key={message.id} className="space-y-1.5">
+            {message.model && (
+              <div className="text-xs font-medium text-muted-foreground">
                 {message.model}
-                {message.provider ? ` (${message.provider})` : ''}
+                {message.provider && (
+                  <span className="font-normal text-muted-foreground/70"> · {message.provider}</span>
+                )}
               </div>
             )}
-            {message.role === 'user' ? (
-              <div className="whitespace-pre-wrap leading-relaxed text-foreground">{message.contentText}</div>
-            ) : (
-              <>
-                <MarkdownRenderer content={message.contentText} />
-                <MessageMetaFooter message={message} />
-              </>
-            )}
+            <MarkdownRenderer content={message.contentText} />
+            <MessageMetaFooter message={message} />
           </div>
-        </div>
-      ))}
+        ),
+      )}
     </div>
   )
 }
