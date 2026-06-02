@@ -39,6 +39,11 @@ export default function Home() {
 
   // M6: route single + compare chat through the backend run engine (feature-flagged).
   const useRuns = chatRunsEnabled()
+  // Export/Clear drive the LEGACY localStorage chat store; on the backend-run
+  // path (single + compare) they act on state the run view doesn't use, so they
+  // would silently do nothing / show stale data. Hide them there. RunChatView
+  // owns its own "New chat". Council stays on the legacy path (M8).
+  const hideLegacyChatControls = useRuns && viewMode !== 'council'
   
   // Check if user should see onboarding
   useEffect(() => {
@@ -129,10 +134,14 @@ export default function Home() {
         singleMode={viewMode === 'single'}
       />
       
-      {/* Sidebar - hidden on mobile, visible on desktop */}
-      <div className="hidden lg:block">
-        <ConversationSidebar />
-      </div>
+      {/* Sidebar - hidden on mobile, visible on desktop. On the backend-run path
+          it's replaced by RunChatView's conversation list (the legacy sidebar is
+          localStorage-only and never shows server-stored conversations). */}
+      {!hideLegacyChatControls && (
+        <div className="hidden lg:block">
+          <ConversationSidebar />
+        </div>
+      )}
       
       {/* Main Content */}
       <div className="flex-1 min-w-0 h-full overflow-hidden border-l border-border">
@@ -164,15 +173,17 @@ export default function Home() {
               </div>
               
               <div className="flex gap-2 items-center">
-                <ExportButton />
-                <button
-                  onClick={clearConversation}
-                  className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
-                  title="Clear conversation"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span className="hidden sm:inline">Clear</span>
-                </button>
+                {!hideLegacyChatControls && <ExportButton />}
+                {!hideLegacyChatControls && (
+                  <button
+                    onClick={clearConversation}
+                    className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
+                    title="Clear conversation"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span className="hidden sm:inline">Clear</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setShowSettings(true)}
                   className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent"
