@@ -204,3 +204,80 @@ worker; composer uploads BEFORE run creation and submits input.attachmentIds —
 createRunRequestSchema). Or first run the M6 live click-through above to fully close M6.
 
 Docs updated: docs/handoff-m6.md (this file)
+
+================================================================================
+ADDENDUM — M6 LIVE CLICK-THROUGH + UI HARDENING (2026-06-02)
+================================================================================
+
+The deferred live click-through (lines 135–149) was RUN with an operator browser
+(Clerk sign-in) against the retained M5C OpenRouter key + Neon. It surfaced a CORS
+defect that blocked run creation in the browser, plus a cluster of presentation-layer
+bugs that curl + mocked-fetch tests could not see. All fixed on branch
+`fix/m6-ui-hardening` (5 commits on 990e1c9). The backend run engine / data model /
+gateway / SSE protocol needed ZERO changes — every fix was in the thin client or the
+reused MVP presentation layer.
+
+ENV GOTCHA (operator note): `apps/api` dev is `tsx watch src/index.ts`, which does NOT
+auto-load `apps/api/.env.local` (only Next.js auto-loads env). Run the API with env loaded:
+  cd apps/api && set -a && source .env.local && set +a && pnpm dev
+Otherwise parseApiEnv throws on missing DATABASE_URL / CLERK_SECRET_KEY /
+PROVIDER_KEY_ENCRYPTION_SECRET and the API never binds :3001. (ALLOWED_ORIGIN defaults to
+http://localhost:3000, which the browser session token's azp requires — plain getToken()
+works; no JWT template needed, unlike the M5C curl flow.)
+
+FIXES (8) — branch fix/m6-ui-hardening:
+ 1. CORS: Idempotency-Key was missing from allowHeaders -> the browser preflight blocked
+    POST /v1/chat/runs (the bug that surfaced first). Extracted CORS_ALLOW_HEADERS to
+    apps/api/src/cors.ts + a regression test. (0b3c7bf)
+ 2. Reconciliation: computeLivePanels (pure, extracted from RunChatView, +6 tests) matches
+    a live panel to its persisted message by modelRunId (EXACT) instead of a greedy
+    provider+model heuristic that collided with a PRIOR turn to the same model and made
+    freshly streamed text vanish on multi-turn. MessageDto.modelRunId added (the API
+    already returned it via select-all). (7008289)
+ 3. MarkdownRenderer (reused MVP component) made streaming-grade: removed global
+    Prism.highlightAll() (re-ran on every token, whole-document re-highlight + DOM thrash),
+    fixed react-markdown v10 fenced-block detection (untagged blocks rendered as inline),
+    removed rehypeRaw (partial-tag mid-stream + XSS surface). SHARED with Council + legacy
+    SingleChatInterface — re-test Council rendering. (b6060d3)
+ 4. Stuck-active recovery: useChatRun.finalize() reconciles from GET /:runId when the
+    stream ends WITHOUT a terminal event (orphaned run after an API restart / dropped
+    fire-and-forget terminal / exhausted reconnects) -> no more infinite spinner, which
+    also unblocked Enter-to-send. Run-token guarded so a superseded run cannot clobber a
+    new one. (7008289)
+ 5. Metadata footer persistence: messages GET LEFT JOINs chat_model_runs ->
+    totalTokens/costUsd/latencyMs on the assistant MessageDto; RunMessageList renders the
+    footer, so tokens/cost/time no longer vanish on the live->history swap and survive a
+    refresh. (b9c4106 + 954827f)
+ 6. Conversation list: RunConversationList (GET /v1/conversations) in the run-view header;
+    selecting resets in-flight run state, THEN loads history (no stale-panel leak). Legacy
+    localStorage ConversationSidebar + Export/Clear hidden in run mode (they acted on
+    legacy state the run path does not use). Interim dropdown — a proper left rail is M6.5.
+    (954827f)
+ 7. Settings wiring: response-language -> settings.systemPrompt, messages-in-context ->
+    context.messageLimit — both were silently dropped on the run path. (954827f)
+ 8. CORS regression guard test (cors.test.ts) — see #1.
+
+VALIDATION: type-check 9/9, lint clean, test 129 (+9: 3 cors, 6 computeLivePanels),
+build 2/2 (web 11/11 pages, api tsc).
+
+OPERATOR-VERIFIED LIVE: single happy path (stream -> persist swap, no double text),
+compare (one run, N panels, sequential per M5B), partial-failure isolation (a stale
+OpenRouter slug failure isolated to its own panel while GPT-4o completed), Enter-to-send
+(after the stuck-active fix), metadata footer persists.
+PENDING operator re-test: streaming render quality on code blocks, multi-turn no-vanish,
+cancel/disconnect -> send-again race (the finalize run-token guard), response-language,
+de-chrome visual, Council shared-renderer sanity.
+
+KNOWN DATA ISSUE (NOT M6): seed OpenRouter slugs are stale -> several "(via OpenRouter)"
+models return "No endpoints found" from OpenRouter (provider message, correctly isolated
+to the panel). openai/gpt-4o is confirmed routable. Re-sync the catalog to current slugs
+(M3 POST /v1/models/sync — not yet built) -> ticket.
+
+NEXT: M6.5 — Frontend Foundation (bounded, BEFORE M7). Clean app shell + a proper
+backend-wired conversation sidebar (the header dropdown here is interim), the streaming
+renderer as a deliberately-owned component, retire the single/compare legacy dual-path,
+and write the missing frontend architecture/standards doc — the frontend never received
+the rigor the backend did, which is why all 8 of these bugs were presentation-layer. Then
+dogfood the core before sequencing M7/M8/M9 by real usage rather than the fixed plan order.
+
+Docs updated: docs/handoff-m6.md (this addendum)
