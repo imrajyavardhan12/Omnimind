@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
 import type { CreateRunRequest } from '@omnimind/types'
 import { useCreateConversation } from '@/features/conversations/hooks/useConversations'
 import { useSettingsStore } from '@/lib/stores/settings'
@@ -11,7 +10,7 @@ import { useChatRun } from '../hooks/useChatRun'
 import { useMessages } from '../hooks/useMessages'
 import { useRunComposerStore } from '../state/runComposerStore'
 import { RunComposer } from './RunComposer'
-import { RunConversationList } from './RunConversationList'
+import { RunConversationSidebar } from './RunConversationSidebar'
 import { RunMessageList } from './RunMessageList'
 import { RunModelPanel } from './RunModelPanel'
 import { RunModelPicker } from './RunModelPicker'
@@ -113,21 +112,16 @@ export function RunChatView({ mode, className }: { mode: 'single' | 'compare'; c
     run.state.phase === 'failed' && run.state.error && run.state.order.length === 0
 
   return (
-    <div className={cn('flex h-full flex-col', className)}>
-      <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-border/40 px-4 py-3">
-        <RunModelPicker mode={mode} />
-        <div className="flex items-center gap-2">
-          <RunConversationList activeId={activeConversationId} onSelect={selectConversation} />
-          <button
-            type="button"
-            onClick={newChat}
-            className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <Plus className="h-4 w-4" />
-            New chat
-          </button>
+    <div className={cn('flex h-full', className)}>
+      <RunConversationSidebar
+        activeId={activeConversationId}
+        onSelect={selectConversation}
+        onNew={newChat}
+      />
+      <div className="flex h-full min-w-0 flex-1 flex-col">
+        <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-border/40 px-4 py-3">
+          <RunModelPicker mode={mode} />
         </div>
-      </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-4">
         {messages.length === 0 && livePanels.length === 0 ? (
@@ -174,6 +168,7 @@ export function RunChatView({ mode, className }: { mode: 'single' | 'compare'; c
           isActive={run.isActive}
           disabled={selectedModels.length === 0}
         />
+      </div>
       </div>
     </div>
   )

@@ -54,3 +54,20 @@ export function useCreateConversation() {
     },
   })
 }
+
+export function useDeleteConversation() {
+  const { getToken } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const token = await getToken()
+      if (!token) throw new Error('Not authenticated')
+      await conversationsApi.remove(id, token)
+      return id
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: conversationKeys.list() })
+    },
+  })
+}
