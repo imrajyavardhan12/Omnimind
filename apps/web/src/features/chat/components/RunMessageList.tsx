@@ -1,6 +1,6 @@
 'use client'
 
-import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer'
+import { ChatMarkdown } from './ChatMarkdown'
 import type { MessageDto } from '@/features/conversations/api/conversationsApi'
 
 function formatCost(costUsd: string | null): string | null {
@@ -50,7 +50,7 @@ export function RunMessageList({ messages }: { messages: MessageDto[] }) {
                 )}
               </div>
             )}
-            <MarkdownRenderer content={message.contentText} />
+            <ChatMarkdown content={message.contentText} />
             <MessageMetaFooter message={message} />
           </div>
         ),

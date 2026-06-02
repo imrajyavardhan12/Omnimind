@@ -1,7 +1,7 @@
 'use client'
 
 import { AlertTriangle, Loader2 } from 'lucide-react'
-import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer'
+import { ChatMarkdown } from './ChatMarkdown'
 import type { MessageDto } from '@/features/conversations/api/conversationsApi'
 import { cn } from '@/lib/utils'
 import { resolveModelText, type ModelPanelStatus, type ModelRunState } from '../api/runState'
@@ -83,7 +83,7 @@ export function RunModelPanel({
           </div>
         </div>
       ) : text ? (
-        <MarkdownRenderer content={text} />
+        <ChatMarkdown content={text} />
       ) : modelRun.status === 'completed' || modelRun.status === 'cancelled' ? (
         <p className="text-sm italic text-muted-foreground">No content.</p>
       ) : (
