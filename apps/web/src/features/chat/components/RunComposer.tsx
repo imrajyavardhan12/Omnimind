@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, Square } from 'lucide-react'
+import { ArrowUp } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 
 interface RunComposerProps {
@@ -63,9 +63,9 @@ export function RunComposer({ onSubmit, onCancel, isActive, disabled, placeholde
             type="button"
             onClick={onCancel}
             aria-label="Stop generating"
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background transition-colors hover:bg-foreground/85"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background transition hover:opacity-90 active:scale-95"
           >
-            <Square className="h-3.5 w-3.5 fill-current" />
+            <span className="h-2.5 w-2.5 rounded-[3px] bg-background" />
           </button>
         ) : (
           <button
@@ -73,9 +73,9 @@ export function RunComposer({ onSubmit, onCancel, isActive, disabled, placeholde
             onClick={() => void submit()}
             disabled={disabled || !input.trim()}
             aria-label="Send message"
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background transition-colors hover:bg-foreground/85 disabled:bg-muted disabled:text-muted-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background transition hover:opacity-90 active:scale-95 disabled:bg-foreground/10 disabled:text-foreground/40 disabled:active:scale-100"
           >
-            <ArrowUp className="h-5 w-5" />
+            <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.5} />
           </button>
         )}
       </div>
