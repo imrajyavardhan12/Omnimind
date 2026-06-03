@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, Send, Square } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ArrowUp, Square } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 
 interface RunComposerProps {
@@ -56,31 +55,29 @@ export function RunComposer({ onSubmit, onCancel, isActive, disabled, placeholde
         className="min-h-[64px] resize-none border-none bg-transparent text-base focus-visible:ring-0 focus-visible:outline-none disabled:opacity-50"
       />
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Enter to send, Shift+Enter for a new line</span>
-        <div className="flex items-center gap-2">
-          {isActive && (
-            <Button
-              type="button"
-              size="sm"
-              variant="destructive"
-              onClick={onCancel}
-              className="flex h-9 w-9 items-center justify-center rounded-lg p-0"
-              aria-label="Stop"
-            >
-              <Square className="h-4 w-4" />
-            </Button>
-          )}
-          <Button
+        <span className="text-xs text-muted-foreground">
+          Enter to send · Shift+Enter for a new line
+        </span>
+        {isActive ? (
+          <button
             type="button"
-            size="sm"
-            onClick={() => void submit()}
-            disabled={disabled || isActive || !input.trim()}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-amber-500 p-0 text-white disabled:opacity-50"
-            aria-label="Send"
+            onClick={onCancel}
+            aria-label="Stop generating"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background transition-colors hover:bg-foreground/85"
           >
-            {isActive ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
-        </div>
+            <Square className="h-3.5 w-3.5 fill-current" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void submit()}
+            disabled={disabled || !input.trim()}
+            aria-label="Send message"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background transition-colors hover:bg-foreground/85 disabled:bg-muted disabled:text-muted-foreground"
+          >
+            <ArrowUp className="h-5 w-5" />
+          </button>
+        )}
       </div>
     </div>
   )

@@ -20,6 +20,11 @@ interface CodeBlockProps {
   children: React.ReactNode
 }
 
+/** Escape `<`/`>` so raw code renders safely as plain text before highlighting. */
+function escapeHtml(s: string): string {
+  return s.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 const CodeBlock = ({ className, children }: CodeBlockProps) => {
   const [copied, setCopied] = useState(false)
   
@@ -132,15 +137,22 @@ const CodeBlock = ({ className, children }: CodeBlockProps) => {
     return codeContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')
   }, [language, codeContent])
 
-  // Use state to manage highlighted code
-  const [highlightedCode, setHighlightedCode] = useState(codeContent)
+  // Show plain (escaped) text immediately so it tracks streaming tokens, and
+  // apply Prism highlighting only once the content settles (debounced).
+  // Re-highlighting on every token made code blocks flash mid-stream.
+  const [highlightedCode, setHighlightedCode] = useState(() => escapeHtml(codeContent))
 
   useEffect(() => {
-    const highlight = async () => {
+    setHighlightedCode(escapeHtml(codeContent))
+    let cancelled = false
+    const timer = setTimeout(async () => {
       const highlighted = await getHighlightedCode()
-      setHighlightedCode(highlighted)
+      if (!cancelled) setHighlightedCode(highlighted)
+    }, 150)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
     }
-    highlight()
   }, [language, codeContent, getHighlightedCode])
 
   return (
