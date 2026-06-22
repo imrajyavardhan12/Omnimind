@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "turbo": "^2.3.3",
-    "typescript": "^5"
+    "typescript": "^6"
   },
   "packageManager": "pnpm@10.25.0",
   "engines": {
