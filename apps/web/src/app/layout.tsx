@@ -6,6 +6,16 @@ import { LayoutContent } from '@/components/LayoutContent'
 
 const inter = Inter({ subsets: ['latin'] })
 
+/**
+ * The whole app renders inside ClerkProvider (see providers.tsx) and every
+ * meaningful page requires a session (see middleware.ts). Prerendering any
+ * page at build time would execute Clerk without a publishable key and crash
+ * `next build` for fresh clones, CI, and keyless preview environments — so
+ * all routes are dynamic by default. Runtime auth behavior is unchanged:
+ * middleware still protects private routes and redirects anonymous users.
+ */
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'OmniMind - Multi-LLM Comparison',
   description: 'Compare multiple LLM responses side-by-side',

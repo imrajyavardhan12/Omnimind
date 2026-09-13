@@ -56,6 +56,9 @@ Branch off `main`. One milestone slice per PR. Keep diffs reviewable
 
 - Node >= 22, `pnpm@10.25.0` (repo-pinned). No Bun workflows for v2.
 - Copy `.env.example` to `apps/api/.env.local` and `apps/web/.env.local`.
+  Keys are required to *run* the app (Clerk session, DB, provider calls), but
+  `pnpm build` works keyless — all web routes are dynamic (see 06b §5) — so a
+  fresh clone can always type-check, test, and build before signing up for keys.
 - DB: `cd packages/db && pnpm db:migrate && pnpm db:seed`.
 
 ## Code of conduct / security
