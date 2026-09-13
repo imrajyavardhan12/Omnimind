@@ -64,6 +64,12 @@ The run view is the reference: `features/chat/{api,hooks,components,state}`.
   or multi-line, not the removed `inline` prop); **no** `rehypeRaw` on model output
   (partial-tag rendering + XSS).
 - Streaming text must not cause layout jank; keep transient buffers append-only.
+- All routes are dynamic (`export const dynamic = 'force-dynamic'` in the root
+  layout): the app renders inside ClerkProvider and every meaningful page needs
+  a session, so prerendering at build time would execute Clerk without a key
+  and crash `next build` for fresh clones/CI/keyless previews. Runtime auth is
+  unchanged (middleware still protects private routes). Do not reintroduce
+  static prerendering without a keyless-build proof.
 
 ## 6. Guardrails (from AGENTS.md §6 — enforced in the browser)
 
