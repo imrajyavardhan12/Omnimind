@@ -4,20 +4,17 @@ import { useState, useEffect } from 'react'
 
 // Force dynamic rendering for this page (uses client-side auth and state)
 export const dynamic = 'force-dynamic'
-import { Settings, RotateCcw, LogOut, User } from 'lucide-react'
+import { Settings, LogOut, User } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUser, useClerk } from '@clerk/nextjs'
 import { SettingsPanel } from '@/components/settings/SettingsPanel'
-import { ExportButton } from '@/components/chat/ExportButton'
-import { ConversationSidebar } from '@/components/history/ConversationSidebar'
 import { ViewModeToggle } from '@/components/ui/ViewModeToggle'
 import { OnboardingModal } from '@/components/OnboardingModal'
 import { UrlHashMessageHandler } from '@/components/chat/UrlHashMessageHandler'
 import { ModelCommandPalette } from '@/components/chat/ModelCommandPalette'
-import { CouncilInterface } from '@/components/council'
+import { RunCouncilView } from '@/features/council/components/RunCouncilView'
 import { RunChatView } from '@/features/chat/components/RunChatView'
 import { useViewModeStore } from '@/lib/stores/viewMode'
-import { useChatStore } from '@/lib/stores/chat'
 
 export default function Home() {
   const [showSettings, setShowSettings] = useState(false)
@@ -25,14 +22,12 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showModelPalette, setShowModelPalette] = useState(false)
   const { viewMode } = useViewModeStore()
-  const { createSession } = useChatStore()
   const { user } = useUser()
   const { signOut } = useClerk()
 
-  // RunChatView (backend runs) is now the ONLY single/compare path. Its own
-  // sidebar + "New chat" replace the legacy Export/Clear/ConversationSidebar,
-  // which drive the legacy localStorage store — keep those only for Council (M8).
-  const hideLegacyChatControls = viewMode !== 'council'
+  // RunChatView (backend runs) is the single/compare path and RunCouncilView
+  // (backend council runs) is the council path. No legacy localStorage chat UI
+  // remains on this page.
 
   // Onboarding
   useEffect(() => {
@@ -67,11 +62,6 @@ export default function Home() {
     await signOut({ redirectUrl: '/auth/login' })
   }
 
-  // Clear conversation (Council only — legacy localStorage store)
-  const clearConversation = () => {
-    createSession()
-  }
-
   return (
     <div className="flex h-full overflow-x-hidden">
       <UrlHashMessageHandler />
@@ -83,13 +73,6 @@ export default function Home() {
         onClose={() => setShowModelPalette(false)}
         singleMode={viewMode === 'single'}
       />
-
-      {/* Legacy localStorage sidebar — only for Council; the run view has its own. */}
-      {!hideLegacyChatControls && (
-        <div className="hidden lg:block">
-          <ConversationSidebar />
-        </div>
-      )}
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 h-full overflow-hidden border-l border-border">
@@ -119,17 +102,6 @@ export default function Home() {
               </div>
 
               <div className="flex gap-2 items-center">
-                {!hideLegacyChatControls && <ExportButton />}
-                {!hideLegacyChatControls && (
-                  <button
-                    onClick={clearConversation}
-                    className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
-                    title="Clear conversation"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span className="hidden sm:inline">Clear</span>
-                  </button>
-                )}
                 <button
                   onClick={() => setShowSettings(true)}
                   className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm border border-border rounded-md hover:bg-accent"
@@ -203,7 +175,7 @@ export default function Home() {
                     transition={{ duration: 0.15 }}
                     className="h-full"
                   >
-                    <CouncilInterface className="h-full" />
+                    <RunCouncilView className="h-full" />
                   </motion.div>
                 ) : (
                   <motion.div

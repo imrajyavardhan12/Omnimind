@@ -233,10 +233,9 @@ const preprocessContent = (content: string): string => {
 }
 
 /**
- * ChatMarkdown — the run view's owned, streaming-grade markdown surface.
- * Moved here from the legacy shared `components/chat/MarkdownRenderer` (which
- * re-exports this as `MarkdownRenderer` for Council/legacy until they retire in
- * M8). The run path imports `ChatMarkdown` directly. Streaming rules: no global
+ * ChatMarkdown — the owned, streaming-grade markdown surface for run views
+ * (chat + council). The legacy `components/chat/MarkdownRenderer` shim was
+ * removed in M8C with the last legacy importer. Streaming rules: no global
  * Prism re-highlight, react-markdown v10 fenced-block detection, no rehypeRaw.
  */
 export const ChatMarkdown = memo(({ content, className }: ChatMarkdownProps) => {
