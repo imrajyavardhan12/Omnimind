@@ -34,6 +34,7 @@ Coding agents should also read the root [`AGENTS.md`](../AGENTS.md).
 ### 2. Application Architecture
 
 - [Frontend Architecture](./architecture/06-frontend-architecture.md)
+- [Frontend Standards (enforced)](./architecture/06b-frontend-standards.md)
 - [Backend Architecture](./architecture/07-backend-architecture.md)
 - [LLM Gateway Architecture](./architecture/08-llm-gateway.md)
 - [Streaming Protocol](./architecture/09-streaming-protocol.md)
@@ -71,6 +72,7 @@ Coding agents should also read the root [`AGENTS.md`](../AGENTS.md).
 - [ADR 0004: Store Provider Keys Server-Side](./adr/0004-server-side-provider-key-vault.md)
 - [ADR 0005: Use Neon Postgres as the Primary System of Record](./adr/0005-postgres-primary-store.md)
 - [ADR 0006: Definitive OmniMind v2 Platform Stack](./adr/0006-definitive-v2-platform-stack.md)
+- [ADR 0007: Cloudflare R2 for File Object Storage](./adr/0007-r2-object-storage.md)
 
 ## Reading Paths by Role
 
