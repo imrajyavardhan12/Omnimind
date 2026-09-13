@@ -6,6 +6,8 @@ export { normalizeUsage } from './gateway/usage.js'
 export { getAdapter } from './gateway/adapter-registry.js'
 export type { AdapterInput, ProviderAdapter } from './gateway/adapter-registry.js'
 export { calculateCost } from './cost.js'
+export { parsePeerRanking, aggregateRankings } from './council/ranking.js'
+export type { ParseInput, AggregateInput } from './council/ranking.js'
 export type {
   GatewayError,
   GatewayMessage,
