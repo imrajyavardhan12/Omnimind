@@ -125,6 +125,24 @@ export const councilModelEventDataSchema = z.object({
 })
 export type CouncilModelEventData = z.infer<typeof councilModelEventDataSchema>
 
+export const councilModelFailedDataSchema = z.object({
+  modelRunId: z.string(),
+  provider: z.string(),
+  model: z.string(),
+  label: answerLabelSchema.optional(),
+  error: z.object({
+    code: z.string(),
+    message: z.string(),
+    retryable: z.boolean().optional(),
+  }),
+})
+export type CouncilModelFailedData = z.infer<typeof councilModelFailedDataSchema>
+
+export const councilSynthesisDeltaDataSchema = z.object({
+  text: z.string(),
+})
+export type CouncilSynthesisDeltaData = z.infer<typeof councilSynthesisDeltaDataSchema>
+
 export const councilRankingCompletedDataSchema = z.object({
   ballot: parsedBallotSchema,
 })
