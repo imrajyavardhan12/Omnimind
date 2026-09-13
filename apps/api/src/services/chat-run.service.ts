@@ -395,7 +395,68 @@ export class ChatRunService {
     }
 
     if (signal.aborted || streamError?.code === 'CANCELLED') {
-      await this.chatModelRunRepo.updateStatus(modelRunId, 'cancelled', { completedAt: new Date() })
+      if (text.length > 0) {
+        // Cancel with a visible partial: persist it as the model run's output
+        // message (status stays 'cancelled') so the partial survives refresh
+        // and the next turn's context sees an answered pair instead of a
+        // dangling unanswered question. The provider never reports totals on
+        // an aborted stream, so usage falls back to estimated zeros.
+        const cancelledAt = new Date()
+        const latencyMs = cancelledAt.getTime() - startedAt.getTime()
+        const cancelledInputTokens = usage?.inputTokens ?? 0
+        const cancelledOutputTokens = usage?.outputTokens ?? 0
+        const cancelledTotalTokens = usage?.totalTokens ?? cancelledInputTokens + cancelledOutputTokens
+        const cancelledUsageSource: 'provider' | 'estimated' = usage ? 'provider' : 'estimated'
+        const cancelledCostUsd = pricing
+          ? calculateCost(cancelledInputTokens, cancelledOutputTokens, pricing.inputCostPer1m, pricing.outputCostPer1m)
+          : '0.000000'
+
+        const partialMessageId = randomUUID()
+        await this.chatRunWriteRepo.completeModelRun({
+          assistantMessage: {
+            id: partialMessageId,
+            conversationId,
+            workspaceId,
+            role: 'assistant',
+            contentText: text,
+            modelRunId,
+            provider: mr.provider,
+            model: mr.model,
+            createdByUserId: null,
+          },
+          modelRunId,
+          modelRun: {
+            status: 'cancelled',
+            outputMessageId: partialMessageId,
+            inputTokens: cancelledInputTokens,
+            outputTokens: cancelledOutputTokens,
+            totalTokens: cancelledTotalTokens,
+            usageSource: cancelledUsageSource,
+            costUsd: cancelledCostUsd,
+            latencyMs,
+            completedAt: cancelledAt,
+          },
+          usageEntry: {
+            workspaceId,
+            userId,
+            conversationId,
+            chatRunId: runId,
+            chatModelRunId: modelRunId,
+            provider: mr.provider,
+            model: mr.model,
+            inputTokens: cancelledInputTokens,
+            outputTokens: cancelledOutputTokens,
+            totalTokens: cancelledTotalTokens,
+            usageSource: cancelledUsageSource,
+            costUsd: cancelledCostUsd,
+          },
+        })
+      } else {
+        // Cancelled before the first token: nothing the user saw, so no
+        // assistant message. The user's own prompt is deliberately left in
+        // place (deleting user-typed input on cancel would be data loss).
+        await this.chatModelRunRepo.updateStatus(modelRunId, 'cancelled', { completedAt: new Date() })
+      }
       emit('model.cancelled', { modelRunId })
       return 'cancelled'
     }

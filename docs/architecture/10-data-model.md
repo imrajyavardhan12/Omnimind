@@ -190,7 +190,9 @@ provider
 model
 status               -- queued, running, retrying, completed, failed, cancelled
 settings_json        -- temperature, max tokens, system prompt reference
-output_message_id nullable
+output_message_id nullable   -- set for completed runs AND for runs cancelled
+                                -- after the first token (the visible partial is
+                                -- persisted so the next turn is not polluted)
 provider_request_id nullable
 error_code nullable
 error_message nullable
