@@ -231,13 +231,25 @@ storage_bucket
 storage_key
 filename
 mime_type
-size_bytes
-sha256
-status               -- uploaded, processing, ready, failed, deleted
+size_bytes           -- bigint (future large media must not overflow int4)
+sha256 nullable      -- recorded on upload completion (M7B)
+status               -- pending, uploaded, processing, ready, failed, deleted
 extracted_text_key nullable
 metadata_json
+deleted_at nullable  -- set on soft delete; drives the retention cleanup job
 created_at
 updated_at
+```
+
+Status lifecycle (M7, see ADR 0007):
+
+```txt
+pending    row created, awaiting the client's direct upload to R2
+uploaded   client signalled completion; object present in R2
+processing extraction running (inline, M7C)
+ready      usable by chat runs
+failed     upload or extraction failed
+deleted    soft-deleted (deleted_at set)
 ```
 
 ### `file_extractions`
@@ -246,7 +258,7 @@ updated_at
 id
 file_id
 status               -- queued, running, completed, failed
-extraction_type      -- pdf_text, ocr, transcription, docx_text
+extraction_type      -- pdf_text, docx_text, passthrough, ocr, transcription
 output_text
 output_storage_key nullable
 error_message nullable

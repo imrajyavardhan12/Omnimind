@@ -17,6 +17,7 @@ export { UsageLedgerRepository } from './repositories/usage-ledger.repository.js
 export type { UsageLedgerFilters } from './repositories/usage-ledger.repository.js'
 export { ChatRunWriteRepository } from './repositories/chat-run-write.repository.js'
 export type { ChatModelRunCompletionFields } from './repositories/chat-run-write.repository.js'
+export { FileRepository } from './repositories/file.repository.js'
 export { ModelCatalogService } from './services/model-catalog.service.js'
 export type {
   ModelCapability,

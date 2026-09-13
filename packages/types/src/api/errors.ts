@@ -9,6 +9,9 @@ export type ErrorCode =
   | "MODEL_CAPABILITY_UNSUPPORTED"
   | "CONTEXT_TOO_LARGE"
   | "BUDGET_EXCEEDED"
+  | "QUOTA_EXCEEDED"
+  | "FILE_TOO_LARGE"
+  | "UNSUPPORTED_MEDIA_TYPE"
   | "INTERNAL_ERROR"
 
 export interface ApiError {
