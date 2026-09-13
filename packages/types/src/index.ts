@@ -75,6 +75,27 @@ export {
   heartbeatDataSchema,
   errorDataSchema,
 } from "./api/stream-events"
+export {
+  ALLOWED_MIME_TYPES,
+  isAllowedMimeType,
+  fileCategoryForMime,
+  MAX_FILE_SIZE_BYTES,
+  MAX_FILES_PER_MESSAGE,
+  MAX_TOTAL_BYTES_PER_MESSAGE,
+  DEFAULT_WORKSPACE_STORAGE_QUOTA_BYTES,
+  fileStatusSchema,
+  createUploadRequestSchema,
+  createUploadResponseSchema,
+  fileResponseSchema,
+} from "./api/files"
+export type {
+  AllowedMimeType,
+  FileCategory,
+  FileStatus,
+  CreateUploadRequest,
+  CreateUploadResponse,
+  FileResponse,
+} from "./api/files"
 export type {
   StreamEnvelope,
   StreamEventType,

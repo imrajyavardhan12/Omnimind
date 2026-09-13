@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: type-check · lint · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.25.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm type-check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+        env:
+          # The web production build prerenders Clerk-wrapped pages, and the
+          # Clerk SDK throws at build time without a valid publishable key
+          # (a fake key fails format validation, so a real test-mode key is
+          # required). Publishable keys are public by design — this is the
+          # repo's own pk_test key stored as an Actions secret. Runtime
+          # previews/prod use real keys from their own environments.
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          # Client-side only; CI artifacts are never deployed, so localhost is fine.
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+
+      - name: Diff check (no whitespace damage)
+        run: git diff --check
