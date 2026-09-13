@@ -298,11 +298,90 @@ describe('ChatRunService', () => {
     releaseStream()
     await result.completion
 
-    expect(mockModelUpdateStatus).toHaveBeenCalledWith(expect.any(String), 'cancelled', expect.any(Object))
+    // The 'partial' delta arrived before cancel, so it is persisted as the
+    // cancelled model run's output (not a bare status flip).
+    expect(mockCompleteModelRun).toHaveBeenCalledTimes(1)
+    const partialArg = mockCompleteModelRun.mock.calls[0]![0]
+    expect(partialArg.assistantMessage.contentText).toBe('partial')
+    expect(partialArg.modelRun.status).toBe('cancelled')
     expect(mockRunUpdateStatus).toHaveBeenCalledWith(result.runId, 'cancelled', expect.any(Object))
     const types = eventTypes()
     expect(types).toContain('model.cancelled')
     expect(types[types.length - 1]).toBe('run.cancelled')
+  })
+
+  it('persists the partial assistant text when cancelled mid-stream', async () => {
+    mockFindByIdem.mockResolvedValue(undefined)
+    let releaseStream!: () => void
+    const gate = new Promise<void>((resolve) => {
+      releaseStream = resolve
+    })
+    mockGatewayStream.mockImplementation(async function* (req: { abortSignal?: AbortSignal }) {
+      yield { type: 'delta', delta: 'partial' } as GatewayStreamChunk
+      yield { type: 'delta', delta: ' answer' } as GatewayStreamChunk
+      await gate
+      if (req.abortSignal?.aborted) {
+        yield { type: 'error', error: { code: 'CANCELLED', message: 'aborted' } } as GatewayStreamChunk
+        return
+      }
+      yield { type: 'done' } as GatewayStreamChunk
+    })
+
+    const coordinator = new RunCoordinator()
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, coordinator)
+    const result = await service.startRun(baseParams)
+
+    await new Promise((r) => setTimeout(r, 0))
+    mockRunFindById.mockResolvedValue({ id: result.runId, workspaceId: 'ws-1', status: 'running' })
+    await service.cancelRun({ runId: result.runId, workspaceId: 'ws-1' })
+    releaseStream()
+    await result.completion
+
+    // The visible partial is persisted as an assistant message linked to the
+    // cancelled model run, with estimated usage and a ledger row.
+    expect(mockCompleteModelRun).toHaveBeenCalledTimes(1)
+    const partialArg = mockCompleteModelRun.mock.calls[0]![0]
+    expect(partialArg.assistantMessage.role).toBe('assistant')
+    expect(partialArg.assistantMessage.contentText).toBe('partial answer')
+    expect(partialArg.assistantMessage.modelRunId).toBeTruthy()
+    expect(partialArg.modelRun.status).toBe('cancelled')
+    expect(partialArg.modelRun.outputMessageId).toBe(partialArg.assistantMessage.id)
+    expect(partialArg.modelRun.usageSource).toBe('estimated')
+    expect(partialArg.usageEntry.usageSource).toBe('estimated')
+    expect(partialArg.usageEntry.chatModelRunId).toBe(partialArg.assistantMessage.modelRunId)
+
+    const types = eventTypes()
+    expect(types).toContain('model.cancelled')
+    expect(types[types.length - 1]).toBe('run.cancelled')
+  })
+
+  it('writes no assistant message when cancelled before the first token', async () => {
+    mockFindByIdem.mockResolvedValue(undefined)
+    let releaseStream!: () => void
+    const gate = new Promise<void>((resolve) => {
+      releaseStream = resolve
+    })
+    mockGatewayStream.mockImplementation(async function* (req: { abortSignal?: AbortSignal }) {
+      await gate
+      if (req.abortSignal?.aborted) {
+        yield { type: 'error', error: { code: 'CANCELLED', message: 'aborted' } } as GatewayStreamChunk
+        return
+      }
+      yield { type: 'done' } as GatewayStreamChunk
+    })
+
+    const coordinator = new RunCoordinator()
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, coordinator)
+    const result = await service.startRun(baseParams)
+
+    await new Promise((r) => setTimeout(r, 0))
+    mockRunFindById.mockResolvedValue({ id: result.runId, workspaceId: 'ws-1', status: 'running' })
+    await service.cancelRun({ runId: result.runId, workspaceId: 'ws-1' })
+    releaseStream()
+    await result.completion
+
+    expect(mockCompleteModelRun).not.toHaveBeenCalled()
+    expect(mockModelUpdateStatus).toHaveBeenCalledWith(expect.any(String), 'cancelled', expect.any(Object))
   })
 
   it('throws CONVERSATION_NOT_FOUND when the conversation is not in the workspace', async () => {
