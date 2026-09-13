@@ -44,6 +44,16 @@ jobs:
 
       - name: Build
         run: pnpm build
+        env:
+          # The web production build prerenders Clerk-wrapped pages, and the
+          # Clerk SDK throws at build time without a valid publishable key
+          # (a fake key fails format validation, so a real test-mode key is
+          # required). Publishable keys are public by design — this is the
+          # repo's own pk_test key stored as an Actions secret. Runtime
+          # previews/prod use real keys from their own environments.
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          # Client-side only; CI artifacts are never deployed, so localhost is fine.
+          NEXT_PUBLIC_API_URL: http://localhost:3001
 
       - name: Diff check (no whitespace damage)
         run: git diff --check
