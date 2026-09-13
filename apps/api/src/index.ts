@@ -13,6 +13,8 @@ import { createFilesRouter } from "./routes/files.js"
 import { createAuthMiddleware } from "./middleware/auth.js"
 import { createWorkspaceMiddleware } from "./middleware/workspace.js"
 import { requestIdMiddleware } from "./middleware/request-id.js"
+import { requestLoggerMiddleware } from "./middleware/request-logger.js"
+import { notFoundHandler, onErrorHandler } from "./lib/error-response.js"
 import { RunCoordinator } from "./services/run-coordinator.js"
 import { CORS_ALLOW_HEADERS } from "./cors.js"
 import type { ApiVariables } from "./types.js"
@@ -24,6 +26,11 @@ const runCoordinator = new RunCoordinator()
 const app = new Hono<{ Variables: ApiVariables }>()
 
 app.use("*", requestIdMiddleware)
+app.use("*", requestLoggerMiddleware)
+
+// Stable JSON error envelopes (never HTML stack traces) + server-side logging.
+app.onError(onErrorHandler)
+app.notFound(notFoundHandler)
 
 app.use(
   "*",
