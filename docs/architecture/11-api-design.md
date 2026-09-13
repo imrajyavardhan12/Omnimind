@@ -270,9 +270,18 @@ Response:
 {
   "fileId": "file_123",
   "uploadUrl": "https://...",
-  "headers": {}
+  "method": "PUT",
+  "headers": {},
+  "stub": true
 }
 ```
+
+`method` is the verb to use against `uploadUrl` (signed PUT). `headers` are any
+required headers for the signed request. `stub: true` is present only while R2 is
+not yet wired (M7A): the URL is a placeholder, not a live upload target. Upload
+validation returns `UNSUPPORTED_MEDIA_TYPE` (415), `FILE_TOO_LARGE` (413), or
+`QUOTA_EXCEEDED` (413) for a disallowed MIME, an oversized file, or a workspace
+over quota.
 
 ### Mark Upload Complete
 
@@ -374,6 +383,8 @@ FORBIDDEN
 VALIDATION_ERROR
 RATE_LIMITED
 QUOTA_EXCEEDED
+FILE_TOO_LARGE
+UNSUPPORTED_MEDIA_TYPE
 BUDGET_EXCEEDED
 PROVIDER_KEY_MISSING
 PROVIDER_AUTH_FAILED

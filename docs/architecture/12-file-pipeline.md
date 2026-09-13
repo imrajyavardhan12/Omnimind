@@ -87,6 +87,20 @@ file uploaded
   → file status updated to ready
 ```
 
+### M7 execution decision (ADR 0007)
+
+For the first slice, extraction runs **inline in the API** (synchronously inside
+`POST /v1/files/:id/complete`), not on a queue — `apps/worker` stays a skeleton. A
+real queue + worker consumer is deferred to its own ADR when extraction
+cost/latency demands it. Redis, a queue, and virus/malware scanning are explicitly
+**not** introduced in M7.
+
+The `files.status` lifecycle is `pending → uploaded → processing → ready` (or
+`failed`), with `deleted` for soft-deleted rows. See
+[Data Model](./10-data-model.md). The M7 phasing (A: schema + APIs with R2 stubbed,
+B: R2 client + signed URLs, C: inline extraction, D: composer + gateway wiring)
+is recorded in ADR 0007.
+
 ## Extraction Strategies
 
 ### Images
