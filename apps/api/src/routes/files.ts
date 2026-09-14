@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { Hono } from 'hono'
 import type { Db } from '@omnimind/db'
-import { AuditLogRepository, FileRepository, type FileRecord } from '@omnimind/db'
+import { AuditLogRepository, FileExtractionRepository, FileRepository, type FileRecord } from '@omnimind/db'
 import {
   createUploadRequestSchema,
+  fileCategoryForMime,
   isAllowedMimeType,
   MAX_FILE_SIZE_BYTES,
   DEFAULT_WORKSPACE_STORAGE_QUOTA_BYTES,
@@ -12,11 +13,13 @@ import {
 import {
   createSignedDownloadUrl,
   createSignedUploadUrl,
+  downloadObject,
   R2ObjectNotFoundError,
+  sha256Hex,
   SIGNED_DOWNLOAD_TTL_SECS,
-  verifyUploadAndHash,
   type R2Deps,
 } from '../lib/r2.js'
+import { extractionTypeForMime, extractTextBytes } from '../lib/extract.js'
 import type { ApiVariables } from '../types.js'
 
 // Allowlist: keep alphanumerics, dot, underscore, hyphen. Everything else
@@ -117,7 +120,19 @@ export function createFilesRouter(db: Db, r2: R2Deps) {
     )
   })
 
-  // POST /v1/files/:fileId/complete — verify the R2 object, record its hash.
+  // POST /v1/files/:fileId/complete — verify the R2 object, extract text inline.
+  //
+  // State machine (extraction is a pure function of the bytes, so re-entry is
+  // always safe — a retry or a crash-orphaned row simply extracts again and
+  // appends a new file_extractions row; last writer wins on files.status):
+  //   pending    -> verify download -> markUploaded -> extract (below)
+  //   uploaded /
+  //   processing / failed -> skip verify, download + extract again
+  //   ready      -> return as-is (idempotent; no second audit row)
+  // Categories: images flip straight to ready (no text to extract — vision
+  // models take the object in M7D); audio stays uploaded (transcription is
+  // deferred); text/pdf/docx extract inline, blocking this request by design
+  // (ADR 0007 — a queue gets its own ADR when latency demands it).
   router.post('/:fileId/complete', async (c) => {
     const rid = c.get('requestId')
 
@@ -131,20 +146,15 @@ export function createFilesRouter(db: Db, r2: R2Deps) {
     if (!existing) {
       return c.json({ error: { code: 'NOT_FOUND', message: 'File not found', requestId: rid } }, 404)
     }
-
-    // Idempotent: a file already past pending is returned as-is with NO second
-    // audit row, so client retries of `complete` don't fabricate duplicate
-    // file.uploaded events.
-    if (existing.status !== 'pending') {
+    if (existing.status === 'ready') {
       return c.json({ file: toFileResponse(existing) })
     }
 
-    // The client claims the bytes landed — prove it. Reads the object back and
-    // hashes it; the recorded size/sha256 come from R2, never the request.
-    // M7C runs inline extraction next (uploaded -> ready).
-    let verified: { sha256: string; sizeBytes: number }
+    // One bounded download serves both verification and extraction (files are
+    // capped at 25 MB at upload-request time).
+    let bytes: Buffer
     try {
-      verified = await verifyUploadAndHash(r2, existing.storageKey)
+      bytes = await downloadObject(r2, existing.storageKey)
     } catch (err) {
       if (err instanceof R2ObjectNotFoundError) {
         return c.json({ error: { code: 'NOT_FOUND', message: 'Stored object not found — the upload may not have finished', requestId: rid } }, 404)
@@ -152,12 +162,56 @@ export function createFilesRouter(db: Db, r2: R2Deps) {
       return c.json({ error: { code: 'STORAGE_ERROR', message: 'Object storage is temporarily unavailable', requestId: rid } }, 502)
     }
 
-    const file = (await repo.markUploaded(existing.id, workspaceId, verified)) ?? existing
+    let file = existing
+    if (existing.status === 'pending') {
+      // The client claims the bytes landed — prove it. Size/sha256 come from
+      // R2, never the upload request.
+      const verified = { sha256: sha256Hex(bytes), sizeBytes: bytes.byteLength }
+      file = (await repo.markUploaded(existing.id, workspaceId, verified)) ?? existing
 
-    new AuditLogRepository(db)
-      .create({ workspaceId, userId: c.get('userId'), action: 'file.uploaded', resourceType: 'file', resourceId: file.id })
-      .catch(() => undefined)
+      new AuditLogRepository(db)
+        .create({ workspaceId, userId: c.get('userId'), action: 'file.uploaded', resourceType: 'file', resourceId: file.id })
+        .catch(() => undefined)
+    }
 
+    if (!isAllowedMimeType(file.mimeType)) {
+      // Unreachable through the upload route (allowlisted there) — fail closed.
+      file = (await repo.updateStatus(file.id, workspaceId, 'failed')) ?? file
+      return c.json({ file: toFileResponse(file) })
+    }
+
+    const category = fileCategoryForMime(file.mimeType)
+    if (category === 'image') {
+      file = (await repo.updateStatus(file.id, workspaceId, 'ready')) ?? file
+      return c.json({ file: toFileResponse(file) })
+    }
+    if (category === 'audio') {
+      // Stored and acknowledged, but not usable yet — transcription is deferred.
+      return c.json({ file: toFileResponse(file) })
+    }
+
+    const extractionType = extractionTypeForMime(file.mimeType)
+    if (extractionType === null) {
+      file = (await repo.updateStatus(file.id, workspaceId, 'failed')) ?? file
+      return c.json({ file: toFileResponse(file) })
+    }
+
+    file = (await repo.updateStatus(file.id, workspaceId, 'processing')) ?? file
+    const extractionRepo = new FileExtractionRepository(db)
+    const extraction = await extractionRepo.create({
+      fileId: file.id,
+      extractionType,
+      status: 'running',
+    })
+    try {
+      const { text } = await extractTextBytes(file.mimeType, bytes)
+      await extractionRepo.updateStatus(extraction.id, 'completed', { outputText: text })
+      file = (await repo.updateStatus(file.id, workspaceId, 'ready')) ?? file
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Extraction failed'
+      await extractionRepo.updateStatus(extraction.id, 'failed', { errorMessage: message })
+      file = (await repo.updateStatus(file.id, workspaceId, 'failed')) ?? file
+    }
     return c.json({ file: toFileResponse(file) })
   })
 

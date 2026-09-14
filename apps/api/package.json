@@ -19,10 +19,13 @@
     "@omnimind/config": "workspace:*",
     "@omnimind/db": "workspace:*",
     "@omnimind/types": "workspace:*",
-    "hono": "^4.6.20"
+    "hono": "^4.6.20",
+    "mammoth": "^1.12.3",
+    "unpdf": "^1.8.1"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "docx": "^9.7.1",
     "tsx": "^4.19.2",
     "typescript": "^5",
     "vitest": "^4.1.7"
