@@ -144,3 +144,37 @@ this; have it ready before M7B.
    add a bucket CORS policy allowing the web origin (`http://localhost:3000`) with
    `PUT`, `GET` and the headers the signed URL requires. The M7B agent will provide
    the exact JSON.
+
+---
+
+## M7B implementation notes (landed 2026-09-14)
+
+- Signed URLs are issued with a 15-minute expiry both directions
+  (`SIGNED_UPLOAD_TTL_SECS` / `SIGNED_DOWNLOAD_TTL_SECS` in
+  `apps/api/src/lib/r2.ts`). The PUT signature does not bind Content-Type;
+  MIME is enforced by the route allowlist and rechecked server-side.
+- `POST /:id/complete` reads the object back, records the R2-observed
+  `sha256` + `sizeBytes` (never the claimed size), and moves
+  `pending → uploaded`. Missing object → 404; R2 outage → 502 `STORAGE_ERROR`.
+- `GET /:id` returns `{ file, downloadUrl, downloadExpiresAt }` — the signed
+  URL is the capability and is never persisted.
+- R2 client construction takes `{ client, bucket }` (`R2Deps`) so routes stay
+  unit-testable without credentials; `createR2Client` reads only the
+  Zod-validated server env.
+
+### Bucket CORS policy (R2 dashboard → bucket → Settings → CORS policy)
+
+Required for direct browser → R2 PUT/GET (without it the preflight fails).
+Add the production web origin alongside localhost when deploying:
+
+```json
+[
+  {
+    "AllowedOrigins": ["http://localhost:3000"],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["Content-Type", "Content-Length"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```

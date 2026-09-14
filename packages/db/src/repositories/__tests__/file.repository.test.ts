@@ -113,4 +113,19 @@ describe('FileRepository', () => {
     mocks.setSumResult([{ total: '0' }])
     expect(await repo.sumActiveSizeBytes('ws_1')).toBe(0)
   })
+
+  it('markUploaded() records the verified hash/size on a pending row', async () => {
+    const row = { id: 'f1', status: 'uploaded', sha256: 'abc123' }
+    mocks.updateReturning.mockResolvedValue([row])
+    const result = await repo.markUploaded('f1', 'ws_1', { sha256: 'abc123', sizeBytes: 1024 })
+    expect(mocks.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'uploaded', sha256: 'abc123', sizeBytes: 1024 }),
+    )
+    expect(result).toEqual(row)
+  })
+
+  it('markUploaded() returns undefined when no pending row matched', async () => {
+    mocks.updateReturning.mockResolvedValue([])
+    expect(await repo.markUploaded('missing', 'ws_1', { sha256: 'x', sizeBytes: 1 })).toBeUndefined()
+  })
 })

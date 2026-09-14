@@ -9,11 +9,15 @@ import {
   DEFAULT_WORKSPACE_STORAGE_QUOTA_BYTES,
   type FileResponse,
 } from '@omnimind/types'
+import {
+  createSignedDownloadUrl,
+  createSignedUploadUrl,
+  R2ObjectNotFoundError,
+  SIGNED_DOWNLOAD_TTL_SECS,
+  verifyUploadAndHash,
+  type R2Deps,
+} from '../lib/r2.js'
 import type { ApiVariables } from '../types.js'
-
-// M7A: R2 is not yet wired. The bucket name is a placeholder; M7B injects the
-// real bucket from env (R2_BUCKET) and issues a signed PUT URL instead of a stub.
-const STORAGE_BUCKET = 'omnimind-files'
 
 // Allowlist: keep alphanumerics, dot, underscore, hyphen. Everything else
 // (path separators, spaces, control chars, unicode) becomes "_", so a filename
@@ -44,10 +48,12 @@ function toFileResponse(f: FileRecord): FileResponse {
   }
 }
 
-export function createFilesRouter(db: Db) {
+export function createFilesRouter(db: Db, r2: R2Deps) {
   const router = new Hono<{ Variables: ApiVariables }>()
 
-  // POST /v1/files/uploads — validate + create a pending row + return upload info.
+  // POST /v1/files/uploads — validate + create a pending row + signed PUT URL.
+  // The browser uploads directly to R2; the object key is pre-assigned so
+  // `complete` can verify exactly what was authorized — no key guessing.
   router.post('/uploads', async (c) => {
     const rid = c.get('requestId')
 
@@ -85,7 +91,7 @@ export function createFilesRouter(db: Db) {
       id: fileId,
       workspaceId,
       uploadedByUserId: c.get('userId'),
-      storageBucket: STORAGE_BUCKET,
+      storageBucket: r2.bucket,
       storageKey,
       filename,
       mimeType,
@@ -93,20 +99,25 @@ export function createFilesRouter(db: Db) {
       status: 'pending',
     })
 
+    let uploadUrl: string
+    try {
+      uploadUrl = await createSignedUploadUrl(r2, storageKey)
+    } catch {
+      return c.json({ error: { code: 'STORAGE_ERROR', message: 'Object storage is temporarily unavailable', requestId: rid } }, 502)
+    }
+
     return c.json(
       {
         fileId: file.id,
-        // M7B replaces this with a real short-expiry signed PUT URL.
-        uploadUrl: `stub://r2/${STORAGE_BUCKET}/${storageKey}`,
+        uploadUrl,
         method: 'PUT' as const,
         headers: {},
-        stub: true,
       },
       201,
     )
   })
 
-  // POST /v1/files/:fileId/complete — client signals the upload finished.
+  // POST /v1/files/:fileId/complete — verify the R2 object, record its hash.
   router.post('/:fileId/complete', async (c) => {
     const rid = c.get('requestId')
 
@@ -121,24 +132,37 @@ export function createFilesRouter(db: Db) {
       return c.json({ error: { code: 'NOT_FOUND', message: 'File not found', requestId: rid } }, 404)
     }
 
-    // M7A: no R2 object to verify and no extraction yet — pending -> uploaded.
     // Idempotent: a file already past pending is returned as-is with NO second
     // audit row, so client retries of `complete` don't fabricate duplicate
-    // file.uploaded events. M7B verifies the R2 object + records sha256; M7C
-    // runs inline extraction (uploaded -> ready).
-    let file = existing
-    if (existing.status === 'pending') {
-      file = (await repo.updateStatus(existing.id, workspaceId, 'uploaded')) ?? existing
-
-      new AuditLogRepository(db)
-        .create({ workspaceId, userId: c.get('userId'), action: 'file.uploaded', resourceType: 'file', resourceId: file.id })
-        .catch(() => undefined)
+    // file.uploaded events.
+    if (existing.status !== 'pending') {
+      return c.json({ file: toFileResponse(existing) })
     }
+
+    // The client claims the bytes landed — prove it. Reads the object back and
+    // hashes it; the recorded size/sha256 come from R2, never the request.
+    // M7C runs inline extraction next (uploaded -> ready).
+    let verified: { sha256: string; sizeBytes: number }
+    try {
+      verified = await verifyUploadAndHash(r2, existing.storageKey)
+    } catch (err) {
+      if (err instanceof R2ObjectNotFoundError) {
+        return c.json({ error: { code: 'NOT_FOUND', message: 'Stored object not found — the upload may not have finished', requestId: rid } }, 404)
+      }
+      return c.json({ error: { code: 'STORAGE_ERROR', message: 'Object storage is temporarily unavailable', requestId: rid } }, 502)
+    }
+
+    const file = (await repo.markUploaded(existing.id, workspaceId, verified)) ?? existing
+
+    new AuditLogRepository(db)
+      .create({ workspaceId, userId: c.get('userId'), action: 'file.uploaded', resourceType: 'file', resourceId: file.id })
+      .catch(() => undefined)
 
     return c.json({ file: toFileResponse(file) })
   })
 
-  // GET /v1/files/:fileId — metadata only (no object, no storage key).
+  // GET /v1/files/:fileId — metadata plus a short-expiry signed download URL
+  // for the private object. No storage internals leak; the URL is the capability.
   router.get('/:fileId', async (c) => {
     const rid = c.get('requestId')
     const repo = new FileRepository(db)
@@ -146,7 +170,17 @@ export function createFilesRouter(db: Db) {
     if (!file) {
       return c.json({ error: { code: 'NOT_FOUND', message: 'File not found', requestId: rid } }, 404)
     }
-    return c.json({ file: toFileResponse(file) })
+    let downloadUrl: string
+    try {
+      downloadUrl = await createSignedDownloadUrl(r2, file.storageKey)
+    } catch {
+      return c.json({ error: { code: 'STORAGE_ERROR', message: 'Object storage is temporarily unavailable', requestId: rid } }, 502)
+    }
+    return c.json({
+      file: toFileResponse(file),
+      downloadUrl,
+      downloadExpiresAt: new Date(Date.now() + SIGNED_DOWNLOAD_TTL_SECS * 1000).toISOString(),
+    })
   })
 
   // DELETE /v1/files/:fileId — soft delete (object cleanup is a later retention job).

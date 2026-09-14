@@ -271,17 +271,16 @@ Response:
   "fileId": "file_123",
   "uploadUrl": "https://...",
   "method": "PUT",
-  "headers": {},
-  "stub": true
+  "headers": {}
 }
 ```
 
-`method` is the verb to use against `uploadUrl` (signed PUT). `headers` are any
-required headers for the signed request. `stub: true` is present only while R2 is
-not yet wired (M7A): the URL is a placeholder, not a live upload target. Upload
-validation returns `UNSUPPORTED_MEDIA_TYPE` (415), `FILE_TOO_LARGE` (413), or
-`QUOTA_EXCEEDED` (413) for a disallowed MIME, an oversized file, or a workspace
-over quota.
+`method` is the verb to use against `uploadUrl` (short-expiry signed PUT,
+15 min). `headers` are any required headers for the signed request (empty —
+the signature does not bind Content-Type). Upload validation returns
+`UNSUPPORTED_MEDIA_TYPE` (415), `FILE_TOO_LARGE` (413), or `QUOTA_EXCEEDED`
+(413) for a disallowed MIME, an oversized file, or a workspace over quota.
+R2 signing failures return `STORAGE_ERROR` (502).
 
 ### Mark Upload Complete
 
@@ -289,11 +288,18 @@ over quota.
 POST /v1/files/:fileId/complete
 ```
 
+Verifies the R2 object landed, records its observed `sha256` + `sizeBytes`,
+and moves the file `pending → uploaded` (idempotent). Missing object → 404;
+R2 outage → `STORAGE_ERROR` (502).
+
 ### Get File
 
 ```txt
 GET /v1/files/:fileId
 ```
+
+Returns `{ file, downloadUrl, downloadExpiresAt }`: curated metadata (never
+storage internals) plus a short-expiry signed GET URL for the private object.
 
 ### Delete File
 
