@@ -10,6 +10,8 @@ const mockMarkUploaded = vi.fn()
 const mockSoftDelete = vi.fn()
 const mockSumActiveSizeBytes = vi.fn().mockResolvedValue(0)
 const mockAuditCreate = vi.fn().mockResolvedValue(undefined)
+const mockExtractionCreate = vi.fn()
+const mockExtractionUpdateStatus = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('@omnimind/db', async (importOriginal) => {
   const original = await importOriginal<typeof import('@omnimind/db')>()
@@ -23,6 +25,10 @@ vi.mock('@omnimind/db', async (importOriginal) => {
       softDelete = mockSoftDelete
       sumActiveSizeBytes = mockSumActiveSizeBytes
     },
+    FileExtractionRepository: class {
+      create = mockExtractionCreate
+      updateStatus = mockExtractionUpdateStatus
+    },
     AuditLogRepository: class {
       create = mockAuditCreate
     },
@@ -30,7 +36,7 @@ vi.mock('@omnimind/db', async (importOriginal) => {
 })
 
 const mockSignedUploadUrl = vi.fn()
-const mockVerifyUploadAndHash = vi.fn()
+const mockDownloadObject = vi.fn()
 const mockSignedDownloadUrl = vi.fn()
 
 vi.mock('../../lib/r2.js', async (importOriginal) => {
@@ -38,8 +44,18 @@ vi.mock('../../lib/r2.js', async (importOriginal) => {
   return {
     ...original,
     createSignedUploadUrl: (...args: unknown[]) => mockSignedUploadUrl(...args),
-    verifyUploadAndHash: (...args: unknown[]) => mockVerifyUploadAndHash(...args),
+    downloadObject: (...args: unknown[]) => mockDownloadObject(...args),
     createSignedDownloadUrl: (...args: unknown[]) => mockSignedDownloadUrl(...args),
+  }
+})
+
+const mockExtractTextBytes = vi.fn()
+
+vi.mock('../../lib/extract.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../lib/extract.js')>()
+  return {
+    ...original,
+    extractTextBytes: (...args: unknown[]) => mockExtractTextBytes(...args),
   }
 })
 
@@ -48,6 +64,7 @@ const { R2ObjectNotFoundError } = await import('../../lib/r2.js')
 
 const FAKE_DB = {} as never
 const FAKE_R2 = { client: {} as never, bucket: 'test-bucket' }
+const PDF_BYTES = Buffer.from('%PDF-1.4 fake', 'utf8')
 
 function buildApp(role: ApiVariables['userRole'] = 'member') {
   const app = new Hono<{ Variables: ApiVariables }>()
@@ -101,7 +118,15 @@ describe('files routes', () => {
     mockSumActiveSizeBytes.mockResolvedValue(0)
     mockSignedUploadUrl.mockResolvedValue('https://r2.test/signed-put')
     mockSignedDownloadUrl.mockResolvedValue('https://r2.test/signed-get')
-    mockVerifyUploadAndHash.mockResolvedValue({ sha256: 'abc123', sizeBytes: 1024 })
+    mockDownloadObject.mockResolvedValue(PDF_BYTES)
+    mockExtractTextBytes.mockResolvedValue({ text: 'hello', extractionType: 'pdf_text' })
+    mockExtractionCreate.mockImplementation(async (input: { fileId: string }) => ({ id: 'x1', ...input }))
+    mockMarkUploaded.mockImplementation(async (id: string) => fakeFileRow({ id, status: 'uploaded', sha256: 'abc123', sizeBytes: PDF_BYTES.byteLength }))
+    // Mocks are stateless: carry the verified sha256 through status flips
+    // like the real rows would (markUploaded ran first).
+    mockUpdateStatus.mockImplementation(async (id: string, _ws: string, status: string) =>
+      fakeFileRow({ id, status, sha256: 'abc123' }),
+    )
   })
 
   describe('POST /files/uploads', () => {
@@ -174,43 +199,90 @@ describe('files routes', () => {
       expect(res.status).toBe(404)
     })
 
-    it('verifies the R2 object, records sha256/size, and returns the DTO without the storage key', async () => {
+    it('verifies, extracts inline, and returns ready with sha256', async () => {
       mockFindById.mockResolvedValue(fakeFileRow({ status: 'pending' }))
-      mockMarkUploaded.mockResolvedValue(fakeFileRow({ status: 'uploaded', sha256: 'abc123' }))
       const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
       expect(res.status).toBe(200)
       const json = await res.json()
-      expect(json.file.status).toBe('uploaded')
+      expect(json.file.status).toBe('ready')
       expect(json.file.sha256).toBe('abc123')
       expect(json.file.storageKey).toBeUndefined()
-      expect(mockVerifyUploadAndHash).toHaveBeenCalledWith(FAKE_R2, 'workspaces/ws_1/files/f1/a.pdf')
-      expect(mockMarkUploaded).toHaveBeenCalledWith('f1', 'ws_1', { sha256: 'abc123', sizeBytes: 1024 })
+      expect(mockDownloadObject).toHaveBeenCalledWith(FAKE_R2, 'workspaces/ws_1/files/f1/a.pdf')
+      expect(mockMarkUploaded).toHaveBeenCalledWith('f1', 'ws_1', { sha256: expect.any(String), sizeBytes: PDF_BYTES.byteLength })
+      expect(mockExtractionCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ fileId: 'f1', extractionType: 'pdf_text', status: 'running' }),
+      )
+      expect(mockExtractTextBytes).toHaveBeenCalledWith('application/pdf', PDF_BYTES)
+      expect(mockExtractionUpdateStatus).toHaveBeenCalledWith('x1', 'completed', { outputText: 'hello' })
       expect(mockAuditCreate).toHaveBeenCalledWith(expect.objectContaining({ action: 'file.uploaded' }))
+    })
+
+    it('marks images ready with no extraction row', async () => {
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'pending', mimeType: 'image/png', filename: 'a.png' }))
+      mockMarkUploaded.mockImplementation(async (id: string) =>
+        fakeFileRow({ id, status: 'uploaded', sha256: 'abc123', mimeType: 'image/png', filename: 'a.png' }),
+      )
+      const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
+      expect(res.status).toBe(200)
+      expect((await res.json()).file.status).toBe('ready')
+      expect(mockExtractionCreate).not.toHaveBeenCalled()
+      expect(mockExtractTextBytes).not.toHaveBeenCalled()
+    })
+
+    it('leaves audio uploaded (transcription deferred)', async () => {
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'pending', mimeType: 'audio/mpeg', filename: 'a.mp3' }))
+      mockMarkUploaded.mockImplementation(async (id: string) =>
+        fakeFileRow({ id, status: 'uploaded', sha256: 'abc123', mimeType: 'audio/mpeg', filename: 'a.mp3' }),
+      )
+      const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
+      expect(res.status).toBe(200)
+      expect((await res.json()).file.status).toBe('uploaded')
+      expect(mockExtractionCreate).not.toHaveBeenCalled()
+    })
+
+    it('marks failed with an extraction row on extractor errors', async () => {
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'pending' }))
+      mockExtractTextBytes.mockRejectedValue(new Error('PDF text extraction failed: nope'))
+      const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
+      expect(res.status).toBe(200)
+      expect((await res.json()).file.status).toBe('failed')
+      expect(mockExtractionUpdateStatus).toHaveBeenCalledWith('x1', 'failed', { errorMessage: 'PDF text extraction failed: nope' })
+    })
+
+    it('re-extracts failed files without re-verifying', async () => {
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'failed', sha256: 'abc123' }))
+      const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
+      expect(res.status).toBe(200)
+      expect((await res.json()).file.status).toBe('ready')
+      expect(mockMarkUploaded).not.toHaveBeenCalled()
+      expect(mockAuditCreate).not.toHaveBeenCalled()
+      expect(mockExtractTextBytes).toHaveBeenCalledTimes(1)
     })
 
     it('404s when the object never landed in R2', async () => {
       mockFindById.mockResolvedValue(fakeFileRow({ status: 'pending' }))
-      mockVerifyUploadAndHash.mockRejectedValue(new R2ObjectNotFoundError('k'))
+      mockDownloadObject.mockRejectedValue(new R2ObjectNotFoundError('k'))
       const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
       expect(res.status).toBe(404)
       expect(mockMarkUploaded).not.toHaveBeenCalled()
       expect(mockAuditCreate).not.toHaveBeenCalled()
     })
 
-    it('502s when R2 verification fails', async () => {
+    it('502s when R2 reads fail', async () => {
       mockFindById.mockResolvedValue(fakeFileRow({ status: 'pending' }))
-      mockVerifyUploadAndHash.mockRejectedValue(new Error('r2 down'))
+      mockDownloadObject.mockRejectedValue(new Error('r2 down'))
       const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
       expect(res.status).toBe(502)
       expect((await res.json()).error.code).toBe('STORAGE_ERROR')
     })
 
-    it('is idempotent: an already-uploaded file is returned without re-verify or audit', async () => {
-      mockFindById.mockResolvedValue(fakeFileRow({ status: 'uploaded', sha256: 'abc123' }))
+    it('is idempotent: a ready file is returned with no R2 or DB writes', async () => {
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'ready', sha256: 'abc123' }))
       const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
       expect(res.status).toBe(200)
-      expect(mockVerifyUploadAndHash).not.toHaveBeenCalled()
+      expect(mockDownloadObject).not.toHaveBeenCalled()
       expect(mockMarkUploaded).not.toHaveBeenCalled()
+      expect(mockExtractionCreate).not.toHaveBeenCalled()
       expect(mockAuditCreate).not.toHaveBeenCalled()
     })
   })
@@ -223,11 +295,11 @@ describe('files routes', () => {
     })
 
     it('returns metadata plus a signed download URL (never storage internals)', async () => {
-      mockFindById.mockResolvedValue(fakeFileRow({ status: 'uploaded', sha256: 'abc123' }))
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'ready', sha256: 'abc123' }))
       const res = await buildApp().request('/files/f1')
       expect(res.status).toBe(200)
       const json = await res.json()
-      expect(json.file).toMatchObject({ id: 'f1', filename: 'a.pdf', status: 'uploaded' })
+      expect(json.file).toMatchObject({ id: 'f1', filename: 'a.pdf', status: 'ready' })
       expect(json.file.storageKey).toBeUndefined()
       expect(json.file.storageBucket).toBeUndefined()
       expect(json.downloadUrl).toBe('https://r2.test/signed-get')
@@ -235,7 +307,7 @@ describe('files routes', () => {
     })
 
     it('502s when download signing fails', async () => {
-      mockFindById.mockResolvedValue(fakeFileRow({ status: 'uploaded' }))
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'ready' }))
       mockSignedDownloadUrl.mockRejectedValue(new Error('signing boom'))
       const res = await buildApp().request('/files/f1')
       expect(res.status).toBe(502)

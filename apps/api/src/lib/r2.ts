@@ -117,37 +117,46 @@ export interface VerifiedUpload {
   sizeBytes: number
 }
 
+/** SHA-256 hex digest of in-memory bytes. */
+export function sha256Hex(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex')
+}
+
 /**
- * Verify the client's upload actually landed, then hash it. Streams the object
- * (never fully buffered beyond the hash update) and returns the hex sha256 +
- * the authoritative byte size — the route trusts THESE, not the claimed size
- * from the upload request. Throws R2ObjectNotFoundError when the client
- * signalled completion without uploading.
+ * Download the full object into memory. Files are capped at 25 MB at
+ * upload-request time, so one bounded buffer is safe and keeps verify +
+ * extract on a single download. Throws R2ObjectNotFoundError / R2StorageError.
  */
-export async function verifyUploadAndHash(deps: R2Deps, key: string): Promise<VerifiedUpload> {
+export async function downloadObject(deps: R2Deps, key: string): Promise<Buffer> {
   let body: unknown
   try {
     const out = await deps.client.send(new GetObjectCommand({ Bucket: deps.bucket, Key: key }))
     body = out.Body
   } catch (err) {
     if (isNotFound(err)) throw new R2ObjectNotFoundError(key)
-    throw new R2StorageError('Failed to read back R2 object for verification', err)
+    throw new R2StorageError('Failed to read R2 object', err)
   }
   if (!isAsyncIterable(body)) {
-    throw new R2StorageError('Unexpected R2 response body while verifying upload')
+    throw new R2StorageError('Unexpected R2 response body while downloading object')
   }
+  const chunks: Uint8Array[] = []
   try {
-    const hash = createHash('sha256')
-    let sizeBytes = 0
     for await (const chunk of body) {
-      const buf = typeof chunk === 'string' ? Buffer.from(chunk) : (chunk as Uint8Array)
-      sizeBytes += buf.byteLength
-      hash.update(buf)
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : (chunk as Uint8Array))
     }
-    return { sha256: hash.digest('hex'), sizeBytes }
   } catch (err) {
-    throw new R2StorageError('Failed to hash R2 object during verification', err)
+    throw new R2StorageError('Failed to stream R2 object body', err)
   }
+  return Buffer.concat(chunks)
+}
+
+/**
+ * Verify the client's upload actually landed, then hash it. Small wrapper
+ * over downloadObject for callers that only need provenance, not content.
+ */
+export async function verifyUploadAndHash(deps: R2Deps, key: string): Promise<VerifiedUpload> {
+  const bytes = await downloadObject(deps, key)
+  return { sha256: sha256Hex(bytes), sizeBytes: bytes.byteLength }
 }
 
 function isNotFound(err: unknown): boolean {
