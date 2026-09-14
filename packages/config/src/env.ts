@@ -11,6 +11,14 @@ export const apiEnvSchema = baseEnvSchema.extend({
   CLERK_SECRET_KEY: z.string().min(1),
   ALLOWED_ORIGIN: z.string().url().default("http://localhost:3000"),
   PROVIDER_KEY_ENCRYPTION_SECRET: z.string().regex(/^[0-9a-fA-F]{64}$/, 'PROVIDER_KEY_ENCRYPTION_SECRET must be exactly 64 hex characters (32 bytes)'),
+  // Cloudflare R2 object storage (M7B file pipeline). Required at boot: the
+  // file routes issue real signed URLs and verify uploads against R2, so a
+  // missing value is a configuration error, not a runtime fallback (ADR 0007).
+  R2_ACCOUNT_ID: z.string().min(1),
+  R2_ACCESS_KEY_ID: z.string().min(1),
+  R2_SECRET_ACCESS_KEY: z.string().min(1),
+  R2_BUCKET: z.string().min(1),
+  R2_ENDPOINT: z.string().url(),
 })
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>

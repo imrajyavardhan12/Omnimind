@@ -6,7 +6,7 @@ workflows — through one durable backend run engine with usage and cost account
 
 > **Status (Sept 2026):** v2 rebuild is mid-flight. M0–M6.5 are on `main`
 > (backend chat runs + clean run-view UI). M7 file pipeline is landing in slices
-> (M7A schema + `/v1/files/*` APIs in review; R2 wiring next). See
+> (M7A schema + M7B live R2 signed URLs done; extraction + composer next). See
 > [`docs/master-rebuild-plan.md`](docs/master-rebuild-plan.md) and the
 > [`docs/handoff-*.md`](docs/) notes for the honest state.
 
@@ -49,7 +49,7 @@ Prereqs: Node 22+, pnpm 10.25.0, a Neon Postgres DB, Clerk keys.
 
 ```bash
 pnpm install
-cp .env.example apps/api/.env.local   # then fill DATABASE_URL, CLERK_*, PROVIDER_KEY_ENCRYPTION_SECRET
+cp .env.example apps/api/.env.local   # then fill DATABASE_URL, CLERK_*, PROVIDER_KEY_ENCRYPTION_SECRET, R2_*
 cp .env.example apps/web/.env.local   # then fill NEXT_PUBLIC_CLERK_*, NEXT_PUBLIC_API_URL
 cd packages/db && pnpm db:migrate && pnpm db:seed
 pnpm dev          # web :3000 + api :3001 via Turborepo
@@ -83,7 +83,7 @@ CI runs the same four gates on every PR. See [CONTRIBUTING.md](CONTRIBUTING.md).
 | M4 LLM Gateway (Vercel AI SDK) | ✅ on main |
 | M5 chat run engine (runs, SSE, ledger) | ✅ on main |
 | M6/M6.5 frontend on backend runs | ✅ on main |
-| M7 file pipeline (R2 + extraction) | 🔶 M7A in review, M7B-D next |
+| M7 file pipeline (R2 + extraction) | 🔶 M7A + M7B done, M7C/D next |
 | M8 Council Mode v2 (durable workflow) | ⬜ next after M7 |
 | M9 observability, cost controls | ⬜ scoped |
 | M10 launch readiness | ⬜ checklist in `docs/architecture/23-launch-checklist.md` |
@@ -96,14 +96,14 @@ GET  /v1/chat/runs/:runId/events   # text/event-stream (run.* + model.* + usage.
 POST /v1/chat/runs/:runId/cancel
 GET  /v1/models?capability=vision  # API-backed catalog
 PUT  /v1/provider-keys/:provider   # BYOK vault (plaintext never returned)
-POST /v1/files/uploads             # M7A: validated, stub URL until R2 lands in M7B
+POST /v1/files/uploads             # validated file create + signed PUT URL
 ```
 
 ## Security model
 
 - Provider keys are AES-256-GCM encrypted server-side; only fingerprints reach the browser.
 - Every route is workspace-scoped; viewers can read but not execute runs.
-- Files live in private R2 buckets behind short-expiry signed URLs (M7B).
+- Files live in private R2 buckets behind short-expiry signed URLs.
 - Never commit `.env.local`. Report vulnerabilities per [SECURITY.md](SECURITY.md).
 
 ## Contributing

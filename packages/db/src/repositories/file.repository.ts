@@ -26,6 +26,35 @@ export class FileRepository {
     return rows[0]
   }
 
+  /**
+   * Mark a pending upload verified: the R2 object exists (checked by the
+   * caller), so record its hash + authoritative size and move to uploaded.
+   * Workspace-scoped; only pending rows transition (idempotent complete).
+   */
+  async markUploaded(
+    id: string,
+    workspaceId: string,
+    verified: { sha256: string; sizeBytes: number },
+  ): Promise<FileRecord | undefined> {
+    const rows = await this.db
+      .update(files)
+      .set({
+        status: 'uploaded',
+        sha256: verified.sha256,
+        sizeBytes: verified.sizeBytes,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(files.id, id),
+          eq(files.workspaceId, workspaceId),
+          eq(files.status, 'pending'),
+        ),
+      )
+      .returning()
+    return rows[0]
+  }
+
   /** Transition status (workspace-scoped, not on deleted rows). */
   async updateStatus(
     id: string,

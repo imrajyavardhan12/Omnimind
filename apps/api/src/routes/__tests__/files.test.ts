@@ -6,6 +6,7 @@ import type { ApiVariables } from '../../types.js'
 const mockCreate = vi.fn()
 const mockFindById = vi.fn()
 const mockUpdateStatus = vi.fn()
+const mockMarkUploaded = vi.fn()
 const mockSoftDelete = vi.fn()
 const mockSumActiveSizeBytes = vi.fn().mockResolvedValue(0)
 const mockAuditCreate = vi.fn().mockResolvedValue(undefined)
@@ -18,6 +19,7 @@ vi.mock('@omnimind/db', async (importOriginal) => {
       create = mockCreate
       findById = mockFindById
       updateStatus = mockUpdateStatus
+      markUploaded = mockMarkUploaded
       softDelete = mockSoftDelete
       sumActiveSizeBytes = mockSumActiveSizeBytes
     },
@@ -27,9 +29,25 @@ vi.mock('@omnimind/db', async (importOriginal) => {
   }
 })
 
+const mockSignedUploadUrl = vi.fn()
+const mockVerifyUploadAndHash = vi.fn()
+const mockSignedDownloadUrl = vi.fn()
+
+vi.mock('../../lib/r2.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../lib/r2.js')>()
+  return {
+    ...original,
+    createSignedUploadUrl: (...args: unknown[]) => mockSignedUploadUrl(...args),
+    verifyUploadAndHash: (...args: unknown[]) => mockVerifyUploadAndHash(...args),
+    createSignedDownloadUrl: (...args: unknown[]) => mockSignedDownloadUrl(...args),
+  }
+})
+
 const { createFilesRouter } = await import('../files.js')
+const { R2ObjectNotFoundError } = await import('../../lib/r2.js')
 
 const FAKE_DB = {} as never
+const FAKE_R2 = { client: {} as never, bucket: 'test-bucket' }
 
 function buildApp(role: ApiVariables['userRole'] = 'member') {
   const app = new Hono<{ Variables: ApiVariables }>()
@@ -41,7 +59,7 @@ function buildApp(role: ApiVariables['userRole'] = 'member') {
     c.set('userRole', role)
     await next()
   })
-  app.route('/files', createFilesRouter(FAKE_DB))
+  app.route('/files', createFilesRouter(FAKE_DB, FAKE_R2))
   return app
 }
 
@@ -51,7 +69,7 @@ function fakeFileRow(over: Record<string, unknown> = {}) {
     id: 'f1',
     workspaceId: 'ws_1',
     uploadedByUserId: 'user_1',
-    storageBucket: 'omnimind-files',
+    storageBucket: 'test-bucket',
     storageKey: 'workspaces/ws_1/files/f1/a.pdf',
     filename: 'a.pdf',
     mimeType: 'application/pdf',
@@ -81,6 +99,9 @@ describe('files routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockSumActiveSizeBytes.mockResolvedValue(0)
+    mockSignedUploadUrl.mockResolvedValue('https://r2.test/signed-put')
+    mockSignedDownloadUrl.mockResolvedValue('https://r2.test/signed-get')
+    mockVerifyUploadAndHash.mockResolvedValue({ sha256: 'abc123', sizeBytes: 1024 })
   })
 
   describe('POST /files/uploads', () => {
@@ -118,17 +139,31 @@ describe('files routes', () => {
       expect(mockCreate).not.toHaveBeenCalled()
     })
 
-    it('201s, creates a pending row, and returns a stubbed upload URL', async () => {
+    it('201s, creates a pending row, and returns a real signed PUT URL (never a stub)', async () => {
       mockCreate.mockResolvedValue(fakeFileRow())
       const res = await postUpload(buildApp(), VALID_UPLOAD)
       expect(res.status).toBe(201)
       const json = await res.json()
       expect(json.fileId).toBe('f1')
       expect(json.method).toBe('PUT')
-      expect(json.stub).toBe(true)
+      expect(json.uploadUrl).toBe('https://r2.test/signed-put')
+      expect(json.stub).toBeUndefined()
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'pending', mimeType: 'application/pdf', workspaceId: 'ws_1' }),
       )
+      expect(mockSignedUploadUrl).toHaveBeenCalledWith(
+        FAKE_R2,
+        // The key embeds a fresh randomUUID per upload — match the shape.
+        expect.stringMatching(/^workspaces\/ws_1\/files\/[^/]+\/a\.pdf$/),
+      )
+    })
+
+    it('502s (STORAGE_ERROR) when R2 signing fails', async () => {
+      mockCreate.mockResolvedValue(fakeFileRow())
+      mockSignedUploadUrl.mockRejectedValue(new Error('signing boom'))
+      const res = await postUpload(buildApp(), VALID_UPLOAD)
+      expect(res.status).toBe(502)
+      expect((await res.json()).error.code).toBe('STORAGE_ERROR')
     })
   })
 
@@ -139,23 +174,43 @@ describe('files routes', () => {
       expect(res.status).toBe(404)
     })
 
-    it('transitions pending -> uploaded and returns the DTO without the storage key', async () => {
+    it('verifies the R2 object, records sha256/size, and returns the DTO without the storage key', async () => {
       mockFindById.mockResolvedValue(fakeFileRow({ status: 'pending' }))
-      mockUpdateStatus.mockResolvedValue(fakeFileRow({ status: 'uploaded' }))
+      mockMarkUploaded.mockResolvedValue(fakeFileRow({ status: 'uploaded', sha256: 'abc123' }))
       const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
       expect(res.status).toBe(200)
       const json = await res.json()
       expect(json.file.status).toBe('uploaded')
+      expect(json.file.sha256).toBe('abc123')
       expect(json.file.storageKey).toBeUndefined()
-      expect(mockUpdateStatus).toHaveBeenCalledWith('f1', 'ws_1', 'uploaded')
+      expect(mockVerifyUploadAndHash).toHaveBeenCalledWith(FAKE_R2, 'workspaces/ws_1/files/f1/a.pdf')
+      expect(mockMarkUploaded).toHaveBeenCalledWith('f1', 'ws_1', { sha256: 'abc123', sizeBytes: 1024 })
       expect(mockAuditCreate).toHaveBeenCalledWith(expect.objectContaining({ action: 'file.uploaded' }))
     })
 
-    it('is idempotent: an already-uploaded file is returned without a second update or audit', async () => {
-      mockFindById.mockResolvedValue(fakeFileRow({ status: 'uploaded' }))
+    it('404s when the object never landed in R2', async () => {
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'pending' }))
+      mockVerifyUploadAndHash.mockRejectedValue(new R2ObjectNotFoundError('k'))
+      const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
+      expect(res.status).toBe(404)
+      expect(mockMarkUploaded).not.toHaveBeenCalled()
+      expect(mockAuditCreate).not.toHaveBeenCalled()
+    })
+
+    it('502s when R2 verification fails', async () => {
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'pending' }))
+      mockVerifyUploadAndHash.mockRejectedValue(new Error('r2 down'))
+      const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
+      expect(res.status).toBe(502)
+      expect((await res.json()).error.code).toBe('STORAGE_ERROR')
+    })
+
+    it('is idempotent: an already-uploaded file is returned without re-verify or audit', async () => {
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'uploaded', sha256: 'abc123' }))
       const res = await buildApp().request('/files/f1/complete', { method: 'POST' })
       expect(res.status).toBe(200)
-      expect(mockUpdateStatus).not.toHaveBeenCalled()
+      expect(mockVerifyUploadAndHash).not.toHaveBeenCalled()
+      expect(mockMarkUploaded).not.toHaveBeenCalled()
       expect(mockAuditCreate).not.toHaveBeenCalled()
     })
   })
@@ -167,14 +222,23 @@ describe('files routes', () => {
       expect(res.status).toBe(404)
     })
 
-    it('returns metadata only (never storage internals)', async () => {
-      mockFindById.mockResolvedValue(fakeFileRow({ status: 'uploaded' }))
+    it('returns metadata plus a signed download URL (never storage internals)', async () => {
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'uploaded', sha256: 'abc123' }))
       const res = await buildApp().request('/files/f1')
       expect(res.status).toBe(200)
       const json = await res.json()
       expect(json.file).toMatchObject({ id: 'f1', filename: 'a.pdf', status: 'uploaded' })
       expect(json.file.storageKey).toBeUndefined()
       expect(json.file.storageBucket).toBeUndefined()
+      expect(json.downloadUrl).toBe('https://r2.test/signed-get')
+      expect(typeof json.downloadExpiresAt).toBe('string')
+    })
+
+    it('502s when download signing fails', async () => {
+      mockFindById.mockResolvedValue(fakeFileRow({ status: 'uploaded' }))
+      mockSignedDownloadUrl.mockRejectedValue(new Error('signing boom'))
+      const res = await buildApp().request('/files/f1')
+      expect(res.status).toBe(502)
     })
   })
 

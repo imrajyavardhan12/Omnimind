@@ -87,6 +87,7 @@ export {
   createUploadRequestSchema,
   createUploadResponseSchema,
   fileResponseSchema,
+  getFileResponseSchema,
 } from "./api/files"
 export type {
   AllowedMimeType,
@@ -95,6 +96,7 @@ export type {
   CreateUploadRequest,
   CreateUploadResponse,
   FileResponse,
+  GetFileResponse,
 } from "./api/files"
 export {
   councilRunStatusSchema,

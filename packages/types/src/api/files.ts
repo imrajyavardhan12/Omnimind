@@ -92,3 +92,15 @@ export const fileResponseSchema = z.object({
   updatedAt: z.string(),
 })
 export type FileResponse = z.infer<typeof fileResponseSchema>
+
+/**
+ * GET /v1/files/:id — metadata plus a short-expiry signed download URL for
+ * the private R2 object (M7B). The URL itself is the capability: it expires
+ * in minutes and is never persisted.
+ */
+export const getFileResponseSchema = z.object({
+  file: fileResponseSchema,
+  downloadUrl: z.string(),
+  downloadExpiresAt: z.string(),
+})
+export type GetFileResponse = z.infer<typeof getFileResponseSchema>
