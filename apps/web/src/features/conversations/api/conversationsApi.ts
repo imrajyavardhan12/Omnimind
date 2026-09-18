@@ -30,6 +30,8 @@ export interface MessageDto {
   totalTokens: number | null
   costUsd: string | null
   latencyMs: number | null
+  /** Files attached to this message (user messages) — metadata only, never storage internals. */
+  attachments: { id: string; filename: string; mimeType: string }[]
   createdAt: string
 }
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { Paperclip } from 'lucide-react'
 import { ChatMarkdown } from './ChatMarkdown'
 import type { MessageDto } from '@/features/conversations/api/conversationsApi'
 
@@ -36,8 +37,24 @@ export function RunMessageList({ messages }: { messages: MessageDto[] }) {
       {messages.map((message) =>
         message.role === 'user' ? (
           <div key={message.id} className="flex justify-end">
-            <div className="w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-md bg-primary/10 px-4 py-2.5 leading-relaxed text-foreground">
-              {message.contentText}
+            <div className="max-w-[85%]">
+              {message.attachments.length > 0 && (
+                <div className="mb-1.5 flex flex-wrap justify-end gap-1.5">
+                  {message.attachments.map((attachment) => (
+                    <span
+                      key={attachment.id}
+                      title={attachment.mimeType}
+                      className="flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 px-2 py-1 text-xs text-muted-foreground"
+                    >
+                      <Paperclip className="h-3 w-3" />
+                      <span className="max-w-[160px] truncate">{attachment.filename}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="w-fit max-w-full whitespace-pre-wrap rounded-2xl rounded-tr-md bg-primary/10 px-4 py-2.5 leading-relaxed text-foreground ml-auto">
+                {message.contentText}
+              </div>
             </div>
           </div>
         ) : (
