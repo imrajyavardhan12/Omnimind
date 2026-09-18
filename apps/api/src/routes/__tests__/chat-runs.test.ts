@@ -39,6 +39,7 @@ const { RunCoordinator } = await import('../../services/run-coordinator.js')
 
 const FAKE_DB = {} as never
 const FAKE_SECRET = 'a'.repeat(64)
+const FAKE_R2 = { client: {} as never, bucket: 'test-bucket' }
 
 function buildAppWith(coordinator: InstanceType<typeof RunCoordinator>, role: ApiVariables['userRole'] = 'member') {
   const app = new Hono<{ Variables: ApiVariables }>()
@@ -50,7 +51,7 @@ function buildAppWith(coordinator: InstanceType<typeof RunCoordinator>, role: Ap
     c.set('userRole', role)
     await next()
   })
-  app.route('/chat/runs', createChatRunsRouter(FAKE_DB, FAKE_SECRET, coordinator))
+  app.route('/chat/runs', createChatRunsRouter(FAKE_DB, FAKE_SECRET, coordinator, FAKE_R2))
   return app
 }
 
@@ -143,6 +144,20 @@ describe('chat-runs routes', () => {
       const res = await postRun(buildApp(), VALID_BODY)
       expect(res.status).toBe(404)
       expect((await res.json()).error.code).toBe('NOT_FOUND')
+    })
+
+    it('returns 404 with ATTACHMENT_NOT_FOUND for unknown attachments', async () => {
+      mockStartRun.mockRejectedValue(new ChatRunServiceError('ATTACHMENT_NOT_FOUND', 'Attachment not found'))
+      const res = await postRun(buildApp(), VALID_BODY)
+      expect(res.status).toBe(404)
+      expect((await res.json()).error.code).toBe('ATTACHMENT_NOT_FOUND')
+    })
+
+    it('returns 400 with ATTACHMENT_NOT_READY for unready files', async () => {
+      mockStartRun.mockRejectedValue(new ChatRunServiceError('ATTACHMENT_NOT_READY', 'not ready'))
+      const res = await postRun(buildApp(), VALID_BODY)
+      expect(res.status).toBe(400)
+      expect((await res.json()).error.code).toBe('ATTACHMENT_NOT_READY')
     })
   })
 

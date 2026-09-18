@@ -1,7 +1,8 @@
-import { streamText, type ModelMessage } from 'ai'
+import { streamText } from 'ai'
 import type { ModelCatalogService, ModelSelectionValidationResult } from '@omnimind/db'
-import type { GatewayMessage, GatewayStreamChunk } from '@omnimind/types'
+import type { GatewayStreamChunk } from '@omnimind/types'
 import type { LLMGatewayRequest } from './types.js'
+import { prepareModelMessages } from './attachments.js'
 import { getAdapter } from './adapter-registry.js'
 import { gatewayError, mapAiSdkError } from './errors.js'
 import { normalizeUsage } from './usage.js'
@@ -41,11 +42,21 @@ export class LLMGateway {
 
     const model = adapter({ apiKey: request.providerKey, modelId: request.model })
 
+    // Attachments are mapped per model: vision models receive native image
+    // parts, everything else becomes budgeted text. Unknown/absent catalog
+    // rows fail safe to non-vision (text only, images marked as such).
+    const attachments = request.attachments ?? []
+    let vision = false
+    if (attachments.length > 0) {
+      const entry = await this.modelCatalogService.findModel(request.provider, request.model)
+      vision = entry?.supportsVision === true
+    }
+
     let result: ReturnType<typeof streamText>
     try {
       const callOpts: Parameters<typeof streamText>[0] = {
         model,
-        messages: toModelMessages(request.messages),
+        messages: prepareModelMessages(request.messages, attachments, { vision }),
       }
       if (request.system !== undefined) callOpts.system = request.system
       if (request.temperature !== undefined) callOpts.temperature = request.temperature
@@ -99,8 +110,4 @@ export class LLMGateway {
 
 function mapValidationFailure(result: Extract<ModelSelectionValidationResult, { ok: false }>) {
   return gatewayError(result.code, result.message)
-}
-
-function toModelMessages(messages: GatewayMessage[]): ModelMessage[] {
-  return messages.map((m) => ({ role: m.role, content: m.content })) as ModelMessage[]
 }
