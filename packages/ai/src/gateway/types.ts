@@ -27,9 +27,32 @@ export interface LLMGatewayRequest {
   system?: string
   temperature?: number
   maxOutputTokens?: number
+  /**
+   * Resolved attachments (bytes + extracted text, workspace-validated by the
+   * orchestrator). The gateway maps them per model: images become native
+   * parts for vision models, everything else becomes (budgeted) text.
+   */
+  attachments?: NormalizedAttachment[]
   /** Plaintext provider API key, decrypted by the caller from the M2 vault. */
   providerKey: string
   abortSignal?: AbortSignal
+}
+
+export type AttachmentCategory = 'image' | 'text' | 'pdf' | 'document' | 'audio'
+
+/**
+ * One workspace-validated attachment, resolved by the orchestrator (which
+ * owns files, R2 bytes, and extraction rows). `text` is the FULL extracted
+ * text — truncation budgets live in the gateway's per-model preparation, not
+ * here. `imageBytes` is present for images (fetched server-side from R2).
+ */
+export interface NormalizedAttachment {
+  fileId: string
+  filename: string
+  mimeType: string
+  category: AttachmentCategory
+  text?: string
+  imageBytes?: Uint8Array
 }
 
 export type AdapterModelMessage = ModelMessage

@@ -3,11 +3,13 @@ import type { Db } from '../client.js'
 import {
   chatModelRuns,
   chatRuns,
+  messageAttachments,
   messages,
   usageLedger,
   type NewChatModelRun,
   type NewChatRun,
   type NewMessage,
+  type NewMessageAttachment,
   type NewUsageLedgerEntry,
 } from '../schema/index.js'
 
@@ -59,11 +61,14 @@ export class ChatRunWriteRepository {
     run: NewChatRun
     userMessage: NewMessage
     modelRuns: NewChatModelRun[]
+    /** Message↔file links (M7D): attached to the user message, role user_upload. */
+    attachments?: NewMessageAttachment[]
   }): Promise<void> {
     const statements = [
       this.db.insert(messages).values(input.userMessage),
       this.db.insert(chatRuns).values(input.run),
       ...input.modelRuns.map((mr) => this.db.insert(chatModelRuns).values(mr)),
+      ...(input.attachments ?? []).map((a) => this.db.insert(messageAttachments).values(a)),
     ]
     await this.runBatch(statements)
   }

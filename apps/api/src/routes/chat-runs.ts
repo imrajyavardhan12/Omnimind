@@ -5,6 +5,7 @@ import { AuditLogRepository, ChatRunEventRepository } from '@omnimind/db'
 import { createRunRequestSchema } from '@omnimind/types'
 import type { ApiVariables } from '../types.js'
 import { ChatRunService, ChatRunServiceError } from '../services/chat-run.service.js'
+import type { R2Deps } from '../lib/r2.js'
 import type { RunCoordinator, AnyStreamEnvelope } from '../services/run-coordinator.js'
 
 const TERMINAL_RUN_EVENTS = new Set(['run.completed', 'run.failed', 'run.cancelled'])
@@ -13,9 +14,9 @@ function isTerminal(eventType: string): boolean {
   return TERMINAL_RUN_EVENTS.has(eventType)
 }
 
-export function createChatRunsRouter(db: Db, encryptionSecret: string, coordinator: RunCoordinator) {
+export function createChatRunsRouter(db: Db, encryptionSecret: string, coordinator: RunCoordinator, r2: R2Deps) {
   const router = new Hono<{ Variables: ApiVariables }>()
-  const service = new ChatRunService(db, encryptionSecret, coordinator)
+  const service = new ChatRunService(db, encryptionSecret, coordinator, r2)
 
   // POST /v1/chat/runs — create a run (role-gated; viewers cannot execute runs).
   router.post('/', async (c) => {
@@ -78,6 +79,15 @@ export function createChatRunsRouter(db: Db, encryptionSecret: string, coordinat
     } catch (err) {
       if (err instanceof ChatRunServiceError && err.code === 'CONVERSATION_NOT_FOUND') {
         return c.json({ error: { code: 'NOT_FOUND', message: err.message, requestId: rid } }, 404)
+      }
+      if (err instanceof ChatRunServiceError && err.code === 'ATTACHMENT_NOT_FOUND') {
+        return c.json({ error: { code: 'ATTACHMENT_NOT_FOUND', message: err.message, requestId: rid } }, 404)
+      }
+      if (err instanceof ChatRunServiceError && err.code === 'ATTACHMENT_NOT_READY') {
+        return c.json({ error: { code: 'ATTACHMENT_NOT_READY', message: err.message, requestId: rid } }, 400)
+      }
+      if (err instanceof ChatRunServiceError && err.code === 'ATTACHMENT_LIMIT_EXCEEDED') {
+        return c.json({ error: { code: 'VALIDATION_ERROR', message: err.message, requestId: rid } }, 400)
       }
       throw err
     }

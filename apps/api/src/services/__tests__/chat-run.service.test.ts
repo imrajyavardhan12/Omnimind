@@ -13,6 +13,9 @@ const mockCreateRunSetup = vi.fn().mockResolvedValue(undefined)
 const mockCompleteModelRun = vi.fn().mockResolvedValue(undefined)
 const mockConvFindById = vi.fn()
 const mockMsgFindRecent = vi.fn()
+const mockFileFindById = vi.fn()
+const mockExtractionFindLatest = vi.fn()
+const mockDownloadObject = vi.fn()
 const mockFindEncrypted = vi.fn()
 const mockFindByProviderModel = vi.fn()
 const mockGatewayStream = vi.fn()
@@ -41,6 +44,12 @@ vi.mock('@omnimind/db', async (importOriginal) => {
     ConversationRepository: class {
       findById = mockConvFindById
     },
+    FileRepository: class {
+      findById = mockFileFindById
+    },
+    FileExtractionRepository: class {
+      findLatestByFileId = mockExtractionFindLatest
+    },
     MessageRepository: class {
       findRecentByConversation = mockMsgFindRecent
     },
@@ -68,11 +77,20 @@ vi.mock('../../lib/encryption.js', () => ({
   decryptProviderKey: vi.fn().mockReturnValue('sk-decrypted'),
 }))
 
+vi.mock('../../lib/r2.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../lib/r2.js')>()
+  return {
+    ...original,
+    downloadObject: (...args: unknown[]) => mockDownloadObject(...args),
+  }
+})
+
 const { ChatRunService } = await import('../chat-run.service.js')
 const { RunCoordinator } = await import('../run-coordinator.js')
 
 const FAKE_DB = {} as never
 const FAKE_SECRET = 'a'.repeat(64)
+const FAKE_R2 = { client: {} as never, bucket: 'test-bucket' }
 
 function fixtureChunks(chunks: GatewayStreamChunk[]) {
   return async function* () {
@@ -127,7 +145,7 @@ describe('ChatRunService', () => {
       ]),
     )
 
-    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator())
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
     const result = await service.startRun(baseParams)
     expect(result.existing).toBe(false)
     await result.completion
@@ -170,7 +188,7 @@ describe('ChatRunService', () => {
   it('dedups on idempotency key without creating a new run', async () => {
     mockFindByIdem.mockResolvedValue({ id: 'run-existing', conversationId: 'conv-existing', status: 'running' })
 
-    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator())
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
     const result = await service.startRun({ ...baseParams, idempotencyKey: 'idem-1' })
     await result.completion
 
@@ -184,7 +202,7 @@ describe('ChatRunService', () => {
     mockFindByIdem.mockResolvedValue({ id: 'run-failed', conversationId: 'conv-1', status: 'failed' })
     mockGatewayStream.mockImplementation(fixtureChunks([{ type: 'done' }]))
 
-    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator())
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
     const result = await service.startRun({ ...baseParams, idempotencyKey: 'idem-1' })
     await result.completion
 
@@ -205,7 +223,7 @@ describe('ChatRunService', () => {
     const uniqueViolation = Object.assign(new Error('duplicate key value violates unique constraint'), { code: '23505' })
     mockCreateRunSetup.mockRejectedValueOnce(uniqueViolation)
 
-    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator())
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
     const result = await service.startRun({ ...baseParams, idempotencyKey: 'idem-1' })
     await result.completion
 
@@ -218,7 +236,7 @@ describe('ChatRunService', () => {
     mockFindByIdem.mockResolvedValue(undefined)
     mockCreateRunSetup.mockRejectedValue(new Error('connection reset'))
 
-    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator())
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
     await expect(service.startRun({ ...baseParams, idempotencyKey: 'idem-1' })).rejects.toThrow('connection reset')
   })
 
@@ -235,7 +253,7 @@ describe('ChatRunService', () => {
         ]),
       )
 
-    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator())
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
     const result = await service.startRun({
       ...baseParams,
       models: [
@@ -259,7 +277,7 @@ describe('ChatRunService', () => {
       fixtureChunks([{ type: 'error', error: { code: 'PROVIDER_AUTH_FAILED', message: 'bad key' } }]),
     )
 
-    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator())
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
     const result = await service.startRun(baseParams)
     await result.completion
 
@@ -287,7 +305,7 @@ describe('ChatRunService', () => {
     })
 
     const coordinator = new RunCoordinator()
-    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, coordinator)
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, coordinator, FAKE_R2)
     const result = await service.startRun(baseParams)
 
     // Let executeRun reach the blocked stream, then cancel.
@@ -328,7 +346,7 @@ describe('ChatRunService', () => {
     })
 
     const coordinator = new RunCoordinator()
-    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, coordinator)
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, coordinator, FAKE_R2)
     const result = await service.startRun(baseParams)
 
     await new Promise((r) => setTimeout(r, 0))
@@ -371,7 +389,7 @@ describe('ChatRunService', () => {
     })
 
     const coordinator = new RunCoordinator()
-    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, coordinator)
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, coordinator, FAKE_R2)
     const result = await service.startRun(baseParams)
 
     await new Promise((r) => setTimeout(r, 0))
@@ -388,8 +406,107 @@ describe('ChatRunService', () => {
     mockFindByIdem.mockResolvedValue(undefined)
     mockConvFindById.mockResolvedValue(undefined)
 
-    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator())
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
     await expect(service.startRun(baseParams)).rejects.toMatchObject({ code: 'CONVERSATION_NOT_FOUND' })
     expect(mockCreateRunSetup).not.toHaveBeenCalled()
+  })
+
+  describe('attachments', () => {
+    const pdfFile = {
+      id: 'f-pdf',
+      workspaceId: 'ws-1',
+      filename: 'paper.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: 1024,
+      status: 'ready',
+      storageKey: 'workspaces/ws-1/files/f-pdf/paper.pdf',
+    }
+    const imageFile = {
+      id: 'f-img',
+      workspaceId: 'ws-1',
+      filename: 'photo.png',
+      mimeType: 'image/png',
+      sizeBytes: 2048,
+      status: 'ready',
+      storageKey: 'workspaces/ws-1/files/f-img/photo.png',
+    }
+
+    beforeEach(() => {
+      mockFindByIdem.mockResolvedValue(undefined)
+      mockGatewayStream.mockImplementation(
+        fixtureChunks([{ type: 'done', usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } }]),
+      )
+    })
+
+    it('links attachments to the user message and passes resolved files to the gateway', async () => {
+      mockFileFindById
+        .mockResolvedValueOnce(pdfFile)
+        .mockResolvedValueOnce(imageFile)
+      mockExtractionFindLatest.mockResolvedValue({ outputText: 'paper text' })
+      mockDownloadObject.mockResolvedValue(Buffer.from([1, 2, 3]))
+
+      const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
+      const result = await service.startRun({
+        ...baseParams,
+        input: { text: 'hi', attachmentIds: ['f-pdf', 'f-img'] },
+      })
+      await result.completion
+
+      // Durable link rows ride the atomic setup batch.
+      const setupArg = mockCreateRunSetup.mock.calls[0]![0]
+      expect(setupArg.attachments).toHaveLength(2)
+      expect(setupArg.attachments[0]).toMatchObject({
+        fileId: 'f-pdf',
+        attachmentRole: 'user_upload',
+      })
+      expect(setupArg.attachments[0].messageId).toBe(setupArg.userMessage.id)
+
+      // Workspace-scoped lookups (missing/foreign/deleted share one path).
+      expect(mockFileFindById).toHaveBeenCalledWith('f-pdf', 'ws-1')
+      expect(mockFileFindById).toHaveBeenCalledWith('f-img', 'ws-1')
+
+      // Gateway receives text for the PDF and bytes for the image.
+      const gatewayReq = mockGatewayStream.mock.calls[0]![0] as {
+        attachments?: { fileId: string; text?: string; imageBytes?: Uint8Array }[]
+      }
+      expect(gatewayReq.attachments).toHaveLength(2)
+      expect(gatewayReq.attachments![0]).toMatchObject({ fileId: 'f-pdf', text: 'paper text' })
+      expect(gatewayReq.attachments![1]?.imageBytes).toBeInstanceOf(Uint8Array)
+      expect(mockDownloadObject).toHaveBeenCalledTimes(1)
+    })
+
+    it('rejects unknown attachments without creating a run', async () => {
+      mockFileFindById.mockResolvedValue(undefined)
+      const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
+      await expect(
+        service.startRun({ ...baseParams, input: { text: 'hi', attachmentIds: ['missing'] } }),
+      ).rejects.toMatchObject({ code: 'ATTACHMENT_NOT_FOUND' })
+      expect(mockCreateRunSetup).not.toHaveBeenCalled()
+      expect(mockGatewayStream).not.toHaveBeenCalled()
+    })
+
+    it('rejects files that are not ready', async () => {
+      mockFileFindById.mockResolvedValue({ ...pdfFile, status: 'uploaded' })
+      const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
+      await expect(
+        service.startRun({ ...baseParams, input: { text: 'hi', attachmentIds: ['f-pdf'] } }),
+      ).rejects.toMatchObject({ code: 'ATTACHMENT_NOT_READY' })
+      expect(mockCreateRunSetup).not.toHaveBeenCalled()
+    })
+
+    it('rejects over-limit attachment counts and totals', async () => {
+      const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2)
+      const eleven = Array.from({ length: 11 }, (_, i) => `f-${i}`)
+      await expect(
+        service.startRun({ ...baseParams, input: { text: 'hi', attachmentIds: eleven } }),
+      ).rejects.toMatchObject({ code: 'ATTACHMENT_LIMIT_EXCEEDED' })
+      expect(mockFileFindById).not.toHaveBeenCalled()
+
+      mockFileFindById.mockResolvedValue({ ...pdfFile, sizeBytes: 40 * 1024 * 1024 })
+      await expect(
+        service.startRun({ ...baseParams, input: { text: 'hi', attachmentIds: ['f-pdf', 'f-pdf'] } }),
+      ).rejects.toMatchObject({ code: 'ATTACHMENT_LIMIT_EXCEEDED' })
+      expect(mockCreateRunSetup).not.toHaveBeenCalled()
+    })
   })
 })

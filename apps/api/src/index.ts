@@ -63,7 +63,7 @@ v1.route("/conversations", createConversationsRouter(db))
 v1.route("/conversations/:conversationId/messages", createMessagesRouter(db))
 v1.route("/provider-keys", createProviderKeysRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET))
 v1.route("/models", createModelsRouter(db))
-v1.route("/chat/runs", createChatRunsRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET, runCoordinator))
+v1.route("/chat/runs", createChatRunsRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET, runCoordinator, { client: r2Client, bucket: env.R2_BUCKET }))
 v1.route("/council/runs", createCouncilRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET, runCoordinator))
 v1.route("/files", createFilesRouter(db, { client: r2Client, bucket: env.R2_BUCKET }))
 

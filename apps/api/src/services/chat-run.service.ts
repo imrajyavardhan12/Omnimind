@@ -6,6 +6,8 @@ import {
   ChatRunRepository,
   ChatRunWriteRepository,
   ConversationRepository,
+  FileExtractionRepository,
+  FileRepository,
   MessageRepository,
   ModelCatalogRepository,
   ModelCatalogService,
@@ -17,10 +19,11 @@ import type {
   NewChatModelRun,
   NewChatRun,
   NewMessage,
+  NewMessageAttachment,
 } from '@omnimind/db'
 import { isUniqueViolation } from '@omnimind/db'
 import { LLMGateway, calculateCost } from '@omnimind/ai'
-import type { LLMGatewayRequest } from '@omnimind/ai'
+import type { LLMGatewayRequest, NormalizedAttachment } from '@omnimind/ai'
 import type {
   ChatRunModelConfig,
   ChatRunStatus,
@@ -31,10 +34,17 @@ import type {
   StreamEnvelope,
   StreamEventType,
 } from '@omnimind/types'
+import { fileCategoryForMime, isAllowedMimeType, MAX_FILES_PER_MESSAGE, MAX_TOTAL_BYTES_PER_MESSAGE } from '@omnimind/types'
 import { decryptProviderKey } from '../lib/encryption.js'
+import { downloadObject, type R2Deps } from '../lib/r2.js'
 import type { RunCoordinator } from './run-coordinator.js'
 
-export type ChatRunServiceErrorCode = 'CONVERSATION_NOT_FOUND' | 'CHAT_RUN_NOT_FOUND'
+export type ChatRunServiceErrorCode =
+  | 'CONVERSATION_NOT_FOUND'
+  | 'CHAT_RUN_NOT_FOUND'
+  | 'ATTACHMENT_NOT_FOUND'
+  | 'ATTACHMENT_NOT_READY'
+  | 'ATTACHMENT_LIMIT_EXCEEDED'
 
 export class ChatRunServiceError extends Error {
   constructor(
@@ -82,6 +92,7 @@ interface ExecuteContext {
   workspaceId: string
   userId: string
   modelRuns: ModelRunDescriptor[]
+  attachments: NormalizedAttachment[]
   messageLimit?: number
 }
 
@@ -105,6 +116,8 @@ export class ChatRunService {
   private readonly chatRunWriteRepo: ChatRunWriteRepository
   private readonly conversationRepo: ConversationRepository
   private readonly messageRepo: MessageRepository
+  private readonly fileRepo: FileRepository
+  private readonly extractionRepo: FileExtractionRepository
   private readonly providerKeyRepo: ProviderKeyRepository
   private readonly modelCatalogRepo: ModelCatalogRepository
   private readonly gateway: LLMGateway
@@ -113,6 +126,7 @@ export class ChatRunService {
     db: Db,
     private readonly encryptionSecret: string,
     private readonly coordinator: RunCoordinator,
+    private readonly r2: R2Deps,
   ) {
     this.chatRunRepo = new ChatRunRepository(db)
     this.chatModelRunRepo = new ChatModelRunRepository(db)
@@ -120,6 +134,8 @@ export class ChatRunService {
     this.chatRunWriteRepo = new ChatRunWriteRepository(db)
     this.conversationRepo = new ConversationRepository(db)
     this.messageRepo = new MessageRepository(db)
+    this.fileRepo = new FileRepository(db)
+    this.extractionRepo = new FileExtractionRepository(db)
     this.providerKeyRepo = new ProviderKeyRepository(db)
     this.modelCatalogRepo = new ModelCatalogRepository(db)
     this.gateway = new LLMGateway({ modelCatalogService: new ModelCatalogService(db) })
@@ -197,8 +213,24 @@ export class ChatRunService {
       ...(d.settings !== undefined && { settingsJson: d.settings }),
     }))
 
+    // Attachments are validated BEFORE any write: a bad file id aborts run
+    // creation instead of orphaning a run with dangling references.
+    const attachmentIds = input.attachmentIds ?? []
+    if (attachmentIds.length > MAX_FILES_PER_MESSAGE) {
+      throw new ChatRunServiceError(
+        'ATTACHMENT_LIMIT_EXCEEDED',
+        `Too many attachments (max ${MAX_FILES_PER_MESSAGE} files per message)`,
+      )
+    }
+    const attachments = await this.resolveAttachments(workspaceId, attachmentIds)
+    const attachmentLinks: NewMessageAttachment[] = attachments.map((a) => ({
+      messageId: userMessageId,
+      fileId: a.fileId,
+      attachmentRole: 'user_upload',
+    }))
+
     try {
-      await this.chatRunWriteRepo.createRunSetup({ run, userMessage, modelRuns: modelRunRows })
+      await this.chatRunWriteRepo.createRunSetup({ run, userMessage, modelRuns: modelRunRows, attachments: attachmentLinks })
     } catch (err) {
       // The UNIQUE (workspace_id, idempotency_key) index is the authoritative
       // dedup guard. A concurrent request that raced past findByIdempotencyKey
@@ -224,6 +256,7 @@ export class ChatRunService {
       workspaceId,
       userId,
       modelRuns,
+      attachments,
       ...(context?.messageLimit !== undefined && { messageLimit: context.messageLimit }),
     })
 
@@ -374,6 +407,7 @@ export class ChatRunService {
         messages,
         providerKey,
         abortSignal: signal,
+        ...(ctx.attachments.length > 0 && { attachments: ctx.attachments }),
       }
       if (mr.settings?.systemPrompt !== undefined) req.system = mr.settings.systemPrompt
       if (mr.settings?.temperature !== undefined) req.temperature = mr.settings.temperature
@@ -545,6 +579,70 @@ export class ChatRunService {
       error: { code, message, provider, ...(retryable !== undefined && { retryable }) },
     })
     return 'failed'
+  }
+
+  /**
+   * Validate attachment ids and resolve them into gateway-ready attachments.
+   *
+   * - findById is workspace-scoped and excludes soft-deleted rows, so missing,
+   *   foreign-workspace, and deleted files all 404 identically (no existence
+   *   oracle across workspaces).
+   * - Only `ready` files are usable: `uploaded` audio (transcription deferred)
+   *   and mid-pipeline files are rejected explicitly, never silently skipped.
+   * - Images fetch bytes from R2 here (orchestrator owns storage); extracted
+   *   text comes from the latest extraction row. Truncation budgets live in
+   *   the gateway's per-model preparation, so full text flows downstream.
+   */
+  private async resolveAttachments(
+    workspaceId: string,
+    attachmentIds: string[],
+  ): Promise<NormalizedAttachment[]> {
+    if (attachmentIds.length === 0) return []
+    const resolved: NormalizedAttachment[] = []
+    let totalBytes = 0
+    for (const id of attachmentIds) {
+      const file = await this.fileRepo.findById(id, workspaceId)
+      if (!file) {
+        throw new ChatRunServiceError('ATTACHMENT_NOT_FOUND', 'Attachment not found')
+      }
+      if (file.status !== 'ready') {
+        throw new ChatRunServiceError(
+          'ATTACHMENT_NOT_READY',
+          `Attachment '${file.filename}' is not ready (status: ${file.status})`,
+        )
+      }
+      if (!isAllowedMimeType(file.mimeType)) {
+        // Unreachable through the upload route (allowlisted there) — fail closed.
+        throw new ChatRunServiceError('ATTACHMENT_NOT_READY', `Attachment '${file.filename}' has an unsupported type`)
+      }
+      totalBytes += file.sizeBytes
+      const category = fileCategoryForMime(file.mimeType)
+      let text: string | undefined
+      let imageBytes: Uint8Array | undefined
+      if (category === 'image') {
+        // R2 outage here propagates to the 500 boundary: the server-side
+        // dependency failed, not the request.
+        imageBytes = new Uint8Array(await downloadObject(this.r2, file.storageKey))
+      } else if (category !== 'audio') {
+        const latest = await this.extractionRepo.findLatestByFileId(file.id)
+        text = latest?.outputText ?? undefined
+      }
+      resolved.push({
+        fileId: file.id,
+        filename: file.filename,
+        mimeType: file.mimeType,
+        category,
+        ...(text !== undefined && { text }),
+        ...(imageBytes !== undefined && { imageBytes }),
+      })
+    }
+    if (totalBytes > MAX_TOTAL_BYTES_PER_MESSAGE) {
+      throw new ChatRunServiceError(
+        'ATTACHMENT_LIMIT_EXCEEDED',
+        `Attachments exceed the per-message total (max ${MAX_TOTAL_BYTES_PER_MESSAGE} bytes)`,
+      )
+    }
+    return resolved
   }
 
   /**
