@@ -19,6 +19,8 @@ export { ChatRunWriteRepository } from './repositories/chat-run-write.repository
 export type { ChatModelRunCompletionFields } from './repositories/chat-run-write.repository.js'
 export { FileRepository } from './repositories/file.repository.js'
 export { FileExtractionRepository } from './repositories/file-extraction.repository.js'
+export { MessageAttachmentRepository } from './repositories/message-attachment.repository.js'
+export type { MessageAttachmentFile } from './repositories/message-attachment.repository.js'
 export { CouncilRunRepository } from './repositories/council-run.repository.js'
 export { CouncilStageResultRepository } from './repositories/council-stage-result.repository.js'
 export { ModelCatalogService } from './services/model-catalog.service.js'

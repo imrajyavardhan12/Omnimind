@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/lib/stores/settings'
 import { cn } from '@/lib/utils'
 import { computeLivePanels } from '../api/runState'
 import { useChatRun } from '../hooks/useChatRun'
+import { useFileUpload } from '@/features/files/hooks/useFileUpload'
 import { useMessages } from '../hooks/useMessages'
 import { useRunComposerStore } from '../state/runComposerStore'
 import { RunComposer } from './RunComposer'
@@ -30,6 +31,7 @@ const GRID_CLASS: Record<number, string> = {
  */
 export function RunChatView({ mode, className }: { mode: 'single' | 'compare'; className?: string }) {
   const run = useChatRun()
+  const uploads = useFileUpload()
   const createConversation = useCreateConversation()
   const { temperature, maxTokens, messagesInContext, responseLanguage } = useSettingsStore()
   const { activeConversationId, singleModel, compareModels, setActiveConversationId } = useRunComposerStore()
@@ -75,7 +77,7 @@ export function RunChatView({ mode, className }: { mode: 'single' | 'compare'; c
 
     const request: CreateRunRequest = {
       conversationId,
-      input: { text },
+      input: { text, ...(uploads.readyIds.length > 0 && { attachmentIds: uploads.readyIds }) },
       models: selectedModels.map((m) => ({
         provider: m.provider,
         model: m.model,
@@ -90,10 +92,14 @@ export function RunChatView({ mode, className }: { mode: 'single' | 'compare'; c
         : {}),
     }
     void run.start(request)
+    // Staged ids are already in the request — clear the tray so the next turn
+    // starts empty. (Draft text clears in the composer on accept.)
+    uploads.reset()
   }
 
   const newChat = () => {
     run.reset()
+    uploads.reset()
     setActiveConversationId(null)
     setSubmitError(null)
   }
@@ -104,6 +110,7 @@ export function RunChatView({ mode, className }: { mode: 'single' | 'compare'; c
   const selectConversation = (id: string) => {
     if (id === activeConversationId) return
     run.reset()
+    uploads.reset()
     setSubmitError(null)
     setActiveConversationId(id)
   }
@@ -167,6 +174,9 @@ export function RunChatView({ mode, className }: { mode: 'single' | 'compare'; c
           onCancel={run.cancel}
           isActive={run.isActive}
           disabled={selectedModels.length === 0}
+          stagedFiles={uploads.staged}
+          onStageFiles={uploads.stageFiles}
+          onRemoveStaged={uploads.removeStaged}
         />
       </div>
       </div>
