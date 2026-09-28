@@ -19,6 +19,17 @@ export const apiEnvSchema = baseEnvSchema.extend({
   R2_SECRET_ACCESS_KEY: z.string().min(1),
   R2_BUCKET: z.string().min(1),
   R2_ENDPOINT: z.string().url(),
+  // M9B cost protection (all optional — safe defaults per 15-cost-controls.md
+  // Initial Defaults; override in apps/api/.env.local for paid tiers).
+  WORKSPACE_MONTHLY_BUDGET_USD: z.coerce.number().positive().default(50),
+  RATE_LIMIT_CHAT_RUNS_PER_MIN: z.coerce.number().int().positive().default(20),
+  RATE_LIMIT_COUNCIL_RUNS_PER_MIN: z.coerce.number().int().positive().default(10),
+  RATE_LIMIT_FILE_UPLOADS_PER_HOUR: z.coerce.number().int().positive().default(100),
+  // Upstash Redis (15-cost-controls.md) — reserved for the distributed swap.
+  // Absent in dev/single-instance: the API uses the in-process limiter and
+  // documents the limitation in apps/api/src/lib/rate-limit.ts.
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
 })
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>

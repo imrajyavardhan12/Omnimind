@@ -305,3 +305,25 @@ describe('chat-runs routes', () => {
     })
   })
 })
+
+describe('POST /chat/runs M9B protection mapping', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockAuditCreate.mockResolvedValue(undefined)
+  })
+
+  it('returns 402 with BUDGET_EXCEEDED when the workspace budget is hit', async () => {
+    mockStartRun.mockRejectedValue(new ChatRunServiceError('BUDGET_EXCEEDED', 'Workspace monthly budget exceeded ($50.00 of $50.00 used)'))
+    const res = await postRun(buildApp(), VALID_BODY)
+    expect(res.status).toBe(402)
+    expect((await res.json()).error.code).toBe('BUDGET_EXCEEDED')
+  })
+
+  it('returns 429 with RATE_LIMITED and a Retry-After header', async () => {
+    mockStartRun.mockRejectedValue(new ChatRunServiceError('RATE_LIMITED', 'Chat run rate limit exceeded — try again shortly', { retryAfterMs: 45_000 }))
+    const res = await postRun(buildApp(), VALID_BODY)
+    expect(res.status).toBe(429)
+    expect((await res.json()).error.code).toBe('RATE_LIMITED')
+    expect(res.headers.get('Retry-After')).toBe('45')
+  })
+})

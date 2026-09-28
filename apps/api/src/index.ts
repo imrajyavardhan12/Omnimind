@@ -17,6 +17,7 @@ import { createWorkspaceMiddleware } from "./middleware/workspace.js"
 import { requestIdMiddleware } from "./middleware/request-id.js"
 import { requestLoggerMiddleware } from "./middleware/request-logger.js"
 import { notFoundHandler, onErrorHandler } from "./lib/error-response.js"
+import { InMemoryRateLimiter } from "./lib/rate-limit.js"
 import { RunCoordinator } from "./services/run-coordinator.js"
 import { CORS_ALLOW_HEADERS } from "./cors.js"
 import type { ApiVariables } from "./types.js"
@@ -59,13 +60,25 @@ const workspaceMiddleware = createWorkspaceMiddleware(db, env.CLERK_SECRET_KEY)
 const v1 = new Hono<{ Variables: ApiVariables }>()
 v1.use("*", authMiddleware)
 v1.use("*", workspaceMiddleware)
+// M9B protection: per-user fixed-window limiters (in-process; see
+// apps/api/src/lib/rate-limit.ts for the Upstash Redis swap note) + monthly
+// workspace budget enforced inside ChatRunService/CouncilService. All bounds
+// come from env with safe defaults — no required secrets.
 v1.route("/conversations", createConversationsRouter(db))
 v1.route("/conversations/:conversationId/messages", createMessagesRouter(db))
 v1.route("/provider-keys", createProviderKeysRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET))
 v1.route("/models", createModelsRouter(db))
-v1.route("/chat/runs", createChatRunsRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET, runCoordinator, { client: r2Client, bucket: env.R2_BUCKET }))
-v1.route("/council/runs", createCouncilRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET, runCoordinator))
-v1.route("/files", createFilesRouter(db, { client: r2Client, bucket: env.R2_BUCKET }))
+v1.route("/chat/runs", createChatRunsRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET, runCoordinator, { client: r2Client, bucket: env.R2_BUCKET }, {
+  monthlyBudgetUsd: env.WORKSPACE_MONTHLY_BUDGET_USD,
+  rateLimiter: new InMemoryRateLimiter({ maxRequests: env.RATE_LIMIT_CHAT_RUNS_PER_MIN, windowMs: 60_000 }),
+}))
+v1.route("/council/runs", createCouncilRouter(db, env.PROVIDER_KEY_ENCRYPTION_SECRET, runCoordinator, {
+  monthlyBudgetUsd: env.WORKSPACE_MONTHLY_BUDGET_USD,
+  rateLimiter: new InMemoryRateLimiter({ maxRequests: env.RATE_LIMIT_COUNCIL_RUNS_PER_MIN, windowMs: 60_000 }),
+}))
+v1.route("/files", createFilesRouter(db, { client: r2Client, bucket: env.R2_BUCKET }, {
+  uploadRateLimiter: new InMemoryRateLimiter({ maxRequests: env.RATE_LIMIT_FILE_UPLOADS_PER_HOUR, windowMs: 3_600_000 }),
+}))
 
 app.route("/v1", v1)
 

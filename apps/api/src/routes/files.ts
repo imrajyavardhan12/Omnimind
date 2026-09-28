@@ -20,6 +20,7 @@ import {
   type R2Deps,
 } from '../lib/r2.js'
 import { extractionTypeForMime, extractTextBytes } from '../lib/extract.js'
+import { rateLimitKey, type RateLimiter } from '../lib/rate-limit.js'
 import type { ApiVariables } from '../types.js'
 
 // Allowlist: keep alphanumerics, dot, underscore, hyphen. Everything else
@@ -51,7 +52,12 @@ function toFileResponse(f: FileRecord): FileResponse {
   }
 }
 
-export function createFilesRouter(db: Db, r2: R2Deps) {
+export interface FilesRouterOptions {
+  /** Per-user upload limiter — absent means no rate gate (tests/legacy). */
+  uploadRateLimiter?: RateLimiter
+}
+
+export function createFilesRouter(db: Db, r2: R2Deps, options: FilesRouterOptions = {}) {
   const router = new Hono<{ Variables: ApiVariables }>()
 
   // POST /v1/files/uploads — validate + create a pending row + signed PUT URL.
@@ -62,6 +68,17 @@ export function createFilesRouter(db: Db, r2: R2Deps) {
 
     if (c.get('userRole') === 'viewer') {
       return c.json({ error: { code: 'FORBIDDEN', message: 'Viewers cannot upload files', requestId: rid } }, 403)
+    }
+
+    // M9B protection: per-user upload rate gate before any DB read/write.
+    if (options.uploadRateLimiter) {
+      const verdict = options.uploadRateLimiter.check(rateLimitKey('file-uploads', c.get('userId')))
+      if (!verdict.allowed) {
+        const retryAfterSec =
+          verdict.retryAfterMs !== undefined ? Math.max(1, Math.ceil(verdict.retryAfterMs / 1000)) : 60
+        c.header('Retry-After', String(retryAfterSec))
+        return c.json({ error: { code: 'RATE_LIMITED', message: 'File upload rate limit exceeded — try again shortly', requestId: rid } }, 429)
+      }
     }
 
     const body = await c.req.json().catch(() => null)

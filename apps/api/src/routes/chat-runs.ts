@@ -4,7 +4,7 @@ import type { Db } from '@omnimind/db'
 import { AuditLogRepository, ChatRunEventRepository } from '@omnimind/db'
 import { createRunRequestSchema } from '@omnimind/types'
 import type { ApiVariables } from '../types.js'
-import { ChatRunService, ChatRunServiceError } from '../services/chat-run.service.js'
+import { ChatRunService, ChatRunServiceError, type ChatRunPolicyOptions } from '../services/chat-run.service.js'
 import type { R2Deps } from '../lib/r2.js'
 import type { RunCoordinator, AnyStreamEnvelope } from '../services/run-coordinator.js'
 
@@ -14,9 +14,9 @@ function isTerminal(eventType: string): boolean {
   return TERMINAL_RUN_EVENTS.has(eventType)
 }
 
-export function createChatRunsRouter(db: Db, encryptionSecret: string, coordinator: RunCoordinator, r2: R2Deps) {
+export function createChatRunsRouter(db: Db, encryptionSecret: string, coordinator: RunCoordinator, r2: R2Deps, policy: ChatRunPolicyOptions = {}) {
   const router = new Hono<{ Variables: ApiVariables }>()
-  const service = new ChatRunService(db, encryptionSecret, coordinator, r2)
+  const service = new ChatRunService(db, encryptionSecret, coordinator, r2, policy)
 
   // POST /v1/chat/runs — create a run (role-gated; viewers cannot execute runs).
   router.post('/', async (c) => {
@@ -88,6 +88,15 @@ export function createChatRunsRouter(db: Db, encryptionSecret: string, coordinat
       }
       if (err instanceof ChatRunServiceError && err.code === 'ATTACHMENT_LIMIT_EXCEEDED') {
         return c.json({ error: { code: 'VALIDATION_ERROR', message: err.message, requestId: rid } }, 400)
+      }
+      if (err instanceof ChatRunServiceError && err.code === 'BUDGET_EXCEEDED') {
+        return c.json({ error: { code: 'BUDGET_EXCEEDED', message: err.message, requestId: rid } }, 402)
+      }
+      if (err instanceof ChatRunServiceError && err.code === 'RATE_LIMITED') {
+        const retryAfterSec =
+          err.retryAfterMs !== undefined ? Math.max(1, Math.ceil(err.retryAfterMs / 1000)) : 60
+        c.header('Retry-After', String(retryAfterSec))
+        return c.json({ error: { code: 'RATE_LIMITED', message: err.message, requestId: rid } }, 429)
       }
       throw err
     }

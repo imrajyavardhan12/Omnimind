@@ -65,3 +65,25 @@ describe('UsageLedgerRepository', () => {
     expect(result).toEqual([])
   })
 })
+
+describe('UsageLedgerRepository.sumCostSince', () => {
+  it('returns the summed month-to-date spend', async () => {
+    const where = vi.fn().mockResolvedValue([{ total: 12.5 }])
+    const from = vi.fn().mockReturnValue({ where })
+    const select = vi.fn().mockReturnValue({ from })
+    const repo = new UsageLedgerRepository({ select } as any)
+    const total = await repo.sumCostSince('ws_1', new Date('2026-09-01T00:00:00.000Z'))
+    expect(select).toHaveBeenCalled()
+    expect(from).toHaveBeenCalled()
+    expect(where).toHaveBeenCalled()
+    expect(total).toBe(12.5)
+  })
+
+  it('returns 0 when the workspace has no usage rows', async () => {
+    const where = vi.fn().mockResolvedValue([{ total: 0 }])
+    const from = vi.fn().mockReturnValue({ where })
+    const select = vi.fn().mockReturnValue({ from })
+    const repo = new UsageLedgerRepository({ select } as any)
+    await expect(repo.sumCostSince('ws_1', new Date())).resolves.toBe(0)
+  })
+})
