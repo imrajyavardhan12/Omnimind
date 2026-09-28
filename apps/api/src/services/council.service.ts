@@ -27,6 +27,8 @@ import type {
   StreamEnvelope,
 } from '@omnimind/types'
 import { decryptProviderKey } from '../lib/encryption.js'
+import { checkWorkspaceBudget, getMonthStartUTC } from '../lib/budget.js'
+import { rateLimitKey, type RateLimiter } from '../lib/rate-limit.js'
 import type { RunCoordinator } from './run-coordinator.js'
 
 /**
@@ -95,15 +97,32 @@ As Chairman, synthesize these perspectives into a single, well-structured answer
 Provide your synthesized answer:`
 }
 
-export type CouncilServiceErrorCode = 'CONVERSATION_NOT_FOUND' | 'COUNCIL_RUN_NOT_FOUND'
+export type CouncilServiceErrorCode =
+  | 'CONVERSATION_NOT_FOUND'
+  | 'COUNCIL_RUN_NOT_FOUND'
+  | 'BUDGET_EXCEEDED'
+  | 'RATE_LIMITED'
+
+export interface CouncilPolicyOptions {
+  /** Monthly workspace budget in USD — absent means no budget gate. */
+  monthlyBudgetUsd?: number
+  /** Per-user fixed-window limiter — absent means no rate gate. */
+  rateLimiter?: RateLimiter
+  /** Test seam: returns month-to-date spend without touching the ledger. */
+  budgetProbe?: (workspaceId: string) => Promise<number>
+  now?: () => number
+}
 
 export class CouncilServiceError extends Error {
+  public readonly retryAfterMs?: number
   constructor(
     public readonly code: CouncilServiceErrorCode,
     message: string,
+    options?: { retryAfterMs?: number },
   ) {
     super(message)
     this.name = 'CouncilServiceError'
+    if (options?.retryAfterMs !== undefined) this.retryAfterMs = options.retryAfterMs
   }
 }
 
@@ -187,6 +206,7 @@ export class CouncilService {
     db: Db,
     private readonly encryptionSecret: string,
     private readonly coordinator: RunCoordinator,
+    private readonly policy: CouncilPolicyOptions = {},
   ) {
     this.councilRunRepo = new CouncilRunRepository(db)
     this.stageRepo = new CouncilStageResultRepository(db)
@@ -200,10 +220,47 @@ export class CouncilService {
   async startRun(params: StartCouncilRunParams): Promise<StartCouncilRunResult> {
     const { workspaceId, userId, query, councilModels, chairmanModel, conversationId } = params
 
+    // M9B protection: per-user rate gate before any write (council fans out
+    // to N models — the most expensive single endpoint).
+    if (this.policy.rateLimiter) {
+      const now = this.policy.now?.() ?? Date.now()
+      const verdict = this.policy.rateLimiter.check(rateLimitKey('council-runs', userId), now)
+      if (!verdict.allowed) {
+        throw new CouncilServiceError('RATE_LIMITED', 'Council run rate limit exceeded — try again shortly', {
+          ...(verdict.retryAfterMs !== undefined && { retryAfterMs: verdict.retryAfterMs }),
+        })
+      }
+    }
+
     if (conversationId !== undefined) {
       const conversation = await this.conversationRepo.findById(conversationId, workspaceId)
       if (!conversation) {
         throw new CouncilServiceError('CONVERSATION_NOT_FOUND', 'Conversation not found')
+      }
+    }
+
+    // M9B protection: monthly workspace budget gate before the run row exists.
+    if (this.policy.monthlyBudgetUsd !== undefined) {
+      const spentUsd = this.policy.budgetProbe
+        ? await this.policy.budgetProbe(workspaceId)
+        : await this.usageRepo.sumCostSince(workspaceId, getMonthStartUTC())
+      const verdict = checkWorkspaceBudget({ spentUsd, budgetUsd: this.policy.monthlyBudgetUsd })
+      if (verdict.warn && verdict.allowed) {
+        console.warn(JSON.stringify({
+          ts: new Date().toISOString(),
+          level: 'warn',
+          msg: 'budget_warn',
+          workspaceId,
+          spentUsd: verdict.spentUsd,
+          budgetUsd: verdict.budgetUsd,
+          percentUsed: Math.round(verdict.percentUsed * 100) / 100,
+        }))
+      }
+      if (!verdict.allowed) {
+        throw new CouncilServiceError(
+          'BUDGET_EXCEEDED',
+          `Workspace monthly budget exceeded ($${verdict.spentUsd.toFixed(2)} of $${verdict.budgetUsd.toFixed(2)} used)`,
+        )
       }
     }
 

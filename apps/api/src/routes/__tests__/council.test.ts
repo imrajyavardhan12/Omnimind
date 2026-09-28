@@ -242,3 +242,57 @@ describe('council routes', () => {
     })
   })
 })
+
+describe('POST /council/runs M9B protection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockCouncilUpdateStatus.mockResolvedValue(undefined)
+    mockStageUpdateStatus.mockResolvedValue(undefined)
+    mockStageFindByCouncilRun.mockResolvedValue([])
+    mockUsageCreate.mockResolvedValue(undefined)
+    mockAuditCreate.mockResolvedValue(undefined)
+    mockFindEncrypted.mockResolvedValue({ encryptedKey: 'enc' })
+    mockFindByProviderModel.mockResolvedValue({ inputCostPer1m: '1.0', outputCostPer1m: '2.0' })
+  })
+
+  function buildPolicyApp(policy: Parameters<typeof createCouncilRouter>[3]) {
+    const app = new Hono<{ Variables: ApiVariables }>()
+    app.use('*', async (c, next) => {
+      c.set('requestId', 'req-test-1')
+      c.set('clerkUserId', 'clerk_1')
+      c.set('userId', 'user_1')
+      c.set('workspaceId', 'ws_1')
+      c.set('userRole', 'member')
+      await next()
+    })
+    app.route('/council/runs', createCouncilRouter(FAKE_DB, FAKE_SECRET, new RunCoordinator(), policy))
+    return app
+  }
+
+  function postCouncil(app: Hono<{ Variables: ApiVariables }>) {
+    return app.request('/council/runs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(VALID_BODY),
+    })
+  }
+
+  it('returns 402 with BUDGET_EXCEEDED without creating a run', async () => {
+    const app = buildPolicyApp({ monthlyBudgetUsd: 50, budgetProbe: async () => 100 })
+    const res = await postCouncil(app)
+    expect(res.status).toBe(402)
+    expect((await res.json()).error.code).toBe('BUDGET_EXCEEDED')
+    expect(mockCouncilCreate).not.toHaveBeenCalled()
+  })
+
+  it('returns 429 with RATE_LIMITED and a Retry-After header', async () => {
+    const app = buildPolicyApp({
+      rateLimiter: { check: () => ({ allowed: false, retryAfterMs: 30_000 }) },
+    })
+    const res = await postCouncil(app)
+    expect(res.status).toBe(429)
+    expect((await res.json()).error.code).toBe('RATE_LIMITED')
+    expect(res.headers.get('Retry-After')).toBe('30')
+    expect(mockCouncilCreate).not.toHaveBeenCalled()
+  })
+})

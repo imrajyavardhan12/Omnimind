@@ -510,3 +510,70 @@ describe('ChatRunService', () => {
     })
   })
 })
+
+describe('ChatRunService M9B protection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockReleaseIdem.mockResolvedValue(undefined)
+    mockRunUpdateStatus.mockResolvedValue(undefined)
+    mockModelUpdateStatus.mockResolvedValue(undefined)
+    mockModelFindByChatRun.mockResolvedValue([])
+    mockEventCreate.mockResolvedValue(undefined)
+    mockCreateRunSetup.mockResolvedValue(undefined)
+    mockCompleteModelRun.mockResolvedValue(undefined)
+    mockConvFindById.mockResolvedValue({ id: baseParams.conversationId, workspaceId: 'ws-1' })
+    mockMsgFindRecent.mockResolvedValue([{ role: 'user', contentText: 'hi' }])
+    mockFindEncrypted.mockResolvedValue({ encryptedKey: 'enc' })
+    mockFindByProviderModel.mockResolvedValue({
+      inputCostPer1m: '1.000000',
+      outputCostPer1m: '2.000000',
+    })
+    mockFindByIdem.mockResolvedValue(undefined)
+    mockGatewayStream.mockImplementation(
+      fixtureChunks([{ type: 'done', usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } }]),
+    )
+  })
+
+  it('blocks when month-to-date spend meets the budget without creating a run', async () => {
+    const { InMemoryRateLimiter } = await import('../../lib/rate-limit.js')
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2, {
+      monthlyBudgetUsd: 50,
+      budgetProbe: async () => 50,
+      rateLimiter: new InMemoryRateLimiter({ maxRequests: 100, windowMs: 60_000 }),
+    })
+    await expect(service.startRun(baseParams)).rejects.toMatchObject({ code: 'BUDGET_EXCEEDED' })
+    expect(mockCreateRunSetup).not.toHaveBeenCalled()
+    expect(mockGatewayStream).not.toHaveBeenCalled()
+  })
+
+  it('allows under-budget runs and still commits setup', async () => {
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2, {
+      monthlyBudgetUsd: 50,
+      budgetProbe: async () => 10,
+    })
+    const result = await service.startRun(baseParams)
+    await result.completion
+    expect(result.existing).toBe(false)
+    expect(mockCreateRunSetup).toHaveBeenCalledTimes(1)
+  })
+
+  it('rate-limits the second run in the window with a retry hint', async () => {
+    const { InMemoryRateLimiter } = await import('../../lib/rate-limit.js')
+    let now = 0
+    const service = new ChatRunService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), FAKE_R2, {
+      rateLimiter: new InMemoryRateLimiter({ maxRequests: 1, windowMs: 60_000 }),
+      now: () => now,
+    })
+    const first = await service.startRun(baseParams)
+    await first.completion
+    expect(mockCreateRunSetup).toHaveBeenCalledTimes(1)
+
+    now = 1_000
+    const err = await service.startRun(baseParams).catch((e) => e)
+    expect(err.code).toBe('RATE_LIMITED')
+    expect(err.retryAfterMs).toBeGreaterThan(0)
+    // Blocked requests never reach the write batch.
+    expect(mockCreateRunSetup).toHaveBeenCalledTimes(1)
+    expect(mockGatewayStream).toHaveBeenCalledTimes(1)
+  })
+})

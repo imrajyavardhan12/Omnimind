@@ -277,3 +277,52 @@ describe('CouncilService', () => {
     })
   })
 })
+
+describe('CouncilService M9B protection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockCouncilUpdateStatus.mockResolvedValue(undefined)
+    mockStageUpdateStatus.mockResolvedValue(undefined)
+    mockStageFindByCouncilRun.mockResolvedValue([])
+    mockUsageCreate.mockResolvedValue(undefined)
+    mockCouncilFindById.mockResolvedValue(undefined)
+    mockCouncilCreate.mockResolvedValue({ id: 'c-new' })
+    mockStageCreate.mockImplementation(async (input: { id: string }) => ({ ...input }))
+    mockConvFindById.mockResolvedValue({ id: 'conv-1', workspaceId: 'ws-1' })
+    mockFindEncrypted.mockResolvedValue({ encryptedKey: 'enc' })
+    mockFindByProviderModel.mockResolvedValue({
+      inputCostPer1m: '1.000000',
+      outputCostPer1m: '2.000000',
+    })
+    mockGatewayStream.mockImplementation(
+      fixtureChunks([{ type: 'done', usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 } }]),
+    )
+  })
+
+  it('blocks when month-to-date spend meets the budget without creating a run', async () => {
+    const service = new CouncilService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), {
+      monthlyBudgetUsd: 50,
+      budgetProbe: async () => 60,
+    })
+    await expect(service.startRun(baseParams)).rejects.toMatchObject({ code: 'BUDGET_EXCEEDED' })
+    expect(mockCouncilCreate).not.toHaveBeenCalled()
+    expect(mockGatewayStream).not.toHaveBeenCalled()
+  })
+
+  it('rate-limits the second council run in the window', async () => {
+    const { InMemoryRateLimiter } = await import('../../lib/rate-limit.js')
+    let now = 0
+    const service = new CouncilService(FAKE_DB, FAKE_SECRET, new RunCoordinator(), {
+      rateLimiter: new InMemoryRateLimiter({ maxRequests: 1, windowMs: 60_000 }),
+      now: () => now,
+    })
+    const first = await service.startRun(baseParams)
+    await first.completion
+    expect(mockCouncilCreate).toHaveBeenCalledTimes(1)
+
+    now = 1_000
+    const err = await service.startRun(baseParams).catch((e) => e)
+    expect(err.code).toBe('RATE_LIMITED')
+    expect(mockCouncilCreate).toHaveBeenCalledTimes(1)
+  })
+})

@@ -5,7 +5,7 @@ import { AuditLogRepository } from '@omnimind/db'
 import { createCouncilRunRequestSchema } from '@omnimind/types'
 import type { CouncilRunStatus } from '@omnimind/types'
 import type { ApiVariables } from '../types.js'
-import { CouncilService, CouncilServiceError } from '../services/council.service.js'
+import { CouncilService, CouncilServiceError, type CouncilPolicyOptions } from '../services/council.service.js'
 import type { RunCoordinator, AnyStreamEnvelope } from '../services/run-coordinator.js'
 
 const TERMINAL_COUNCIL_EVENTS = new Set(['council.completed', 'council.failed', 'council.cancelled'])
@@ -27,9 +27,9 @@ function terminalEnvelopeFor(status: CouncilRunStatus, runId: string): AnyStream
   return envelope('council.cancelled', {})
 }
 
-export function createCouncilRouter(db: Db, encryptionSecret: string, coordinator: RunCoordinator) {
+export function createCouncilRouter(db: Db, encryptionSecret: string, coordinator: RunCoordinator, policy: CouncilPolicyOptions = {}) {
   const router = new Hono<{ Variables: ApiVariables }>()
-  const service = new CouncilService(db, encryptionSecret, coordinator)
+  const service = new CouncilService(db, encryptionSecret, coordinator, policy)
 
   // POST /v1/council/runs — create a durable council workflow (viewers cannot execute).
   router.post('/', async (c) => {
@@ -83,6 +83,15 @@ export function createCouncilRouter(db: Db, encryptionSecret: string, coordinato
     } catch (err) {
       if (err instanceof CouncilServiceError && err.code === 'CONVERSATION_NOT_FOUND') {
         return c.json({ error: { code: 'NOT_FOUND', message: err.message, requestId: rid } }, 404)
+      }
+      if (err instanceof CouncilServiceError && err.code === 'BUDGET_EXCEEDED') {
+        return c.json({ error: { code: 'BUDGET_EXCEEDED', message: err.message, requestId: rid } }, 402)
+      }
+      if (err instanceof CouncilServiceError && err.code === 'RATE_LIMITED') {
+        const retryAfterSec =
+          err.retryAfterMs !== undefined ? Math.max(1, Math.ceil(err.retryAfterMs / 1000)) : 60
+        c.header('Retry-After', String(retryAfterSec))
+        return c.json({ error: { code: 'RATE_LIMITED', message: err.message, requestId: rid } }, 429)
       }
       throw err
     }

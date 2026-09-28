@@ -336,3 +336,30 @@ describe('files routes', () => {
     })
   })
 })
+
+describe('POST /files/uploads M9B protection', () => {
+  it('429s with RATE_LIMITED and a Retry-After header without creating a row', async () => {
+    const { Hono: Hono2 } = await import('hono')
+    const app = new Hono2<{ Variables: ApiVariables }>()
+    app.use('*', async (c, next) => {
+      c.set('requestId', 'req-test-1')
+      c.set('clerkUserId', 'clerk_1')
+      c.set('userId', 'user_1')
+      c.set('workspaceId', 'ws_1')
+      c.set('userRole', 'member')
+      await next()
+    })
+    app.route('/files', createFilesRouter(FAKE_DB, FAKE_R2, {
+      uploadRateLimiter: { check: () => ({ allowed: false, retryAfterMs: 30_000 }) },
+    }))
+    const res = await app.request('/files/uploads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(VALID_UPLOAD),
+    })
+    expect(res.status).toBe(429)
+    expect((await res.json()).error.code).toBe('RATE_LIMITED')
+    expect(res.headers.get('Retry-After')).toBe('30')
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
+})
