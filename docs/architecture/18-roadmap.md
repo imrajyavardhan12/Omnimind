@@ -1,5 +1,21 @@
 # 18 — Migration and Implementation Roadmap
 
+## Numbering note
+
+This doc uses **Phase 0–9**; `docs/master-rebuild-plan.md` uses **M0–M11**.
+They describe the same sequence. Rough mapping:
+
+```txt
+Phase 0 ≅ M0   Phase 5 ≅ M5   Phase 8 ≅ M9
+Phase 1 ≅ M1   Phase 6 ≅ M7   Phase 9 ≅ M10 (+ M11 follow-ups)
+Phase 2 ≅ M2   Phase 3 ≅ M3
+Phase 4 ≅ M4   Phase 7 ≅ M8
+```
+
+(M6 has no dedicated phase here — it landed as the frontend migration inside
+Phase 5-era work plus the M6.5 hardening pass.) When the two docs disagree on
+scope, the master plan's milestone exit criteria win.
+
 ## Overview
 
 The rebuild should be incremental but decisive. The goal is not to polish the current MVP forever, but to introduce a production-grade architecture and migrate features onto it.

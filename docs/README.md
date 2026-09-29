@@ -73,6 +73,7 @@ Coding agents should also read the root [`AGENTS.md`](../AGENTS.md).
 - [ADR 0005: Use Neon Postgres as the Primary System of Record](./adr/0005-postgres-primary-store.md)
 - [ADR 0006: Definitive OmniMind v2 Platform Stack](./adr/0006-definitive-v2-platform-stack.md)
 - [ADR 0007: Cloudflare R2 for File Object Storage](./adr/0007-r2-object-storage.md)
+- [ADR 0008: Defer the Queue-Backed Workflow Worker](./adr/0008-deferred-workflow-worker.md)
 
 ## Reading Paths by Role
 
