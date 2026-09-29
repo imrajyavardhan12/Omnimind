@@ -104,6 +104,14 @@ export function UsageSection() {
               )
             })}
           </div>
+          {/* Text alternative: CSS bars carry no data for assistive tech. */}
+          <ul className="sr-only">
+            {data.daily.map((d) => (
+              <li key={d.date}>
+                {d.date}: {formatUsd(d.costUsd)}, {d.runs.toLocaleString()} runs
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

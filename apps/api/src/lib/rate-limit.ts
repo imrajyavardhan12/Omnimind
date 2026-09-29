@@ -29,6 +29,9 @@ export interface RateLimiterOptions {
   windowMs: number
 }
 
+/** Upper bound on tracked keys — eviction above this keeps memory bounded. */
+const MAX_TRACKED_KEYS = 10_000
+
 export class InMemoryRateLimiter implements RateLimiter {
   private readonly maxRequests: number
   private readonly windowMs: number
@@ -43,14 +46,35 @@ export class InMemoryRateLimiter implements RateLimiter {
     const windowStart = now - this.windowMs
     const existing = this.hits.get(key) ?? []
     const fresh = existing.filter((t) => t > windowStart)
+    // Bounded memory: one entry per active key. Idle keys are evicted lazily
+    // here so a long-lived process can't accumulate them without bound.
+    if (fresh.length === 0) {
+      this.hits.delete(key)
+    } else {
+      this.hits.set(key, fresh)
+      if (this.hits.size > MAX_TRACKED_KEYS) this.evictIdleKeys(now)
+    }
     if (fresh.length >= this.maxRequests) {
       const oldest = Math.min(...fresh)
-      this.hits.set(key, fresh)
       return { allowed: false, retryAfterMs: Math.max(0, oldest + this.windowMs - now) }
     }
-    fresh.push(now)
-    this.hits.set(key, fresh)
+    const next = [...fresh, now]
+    this.hits.set(key, next)
+    if (this.hits.size > MAX_TRACKED_KEYS) this.evictIdleKeys(now)
     return { allowed: true }
+  }
+
+  /**
+   * Drop keys whose entire window has expired (oldest first). Called only
+   * when the map exceeds MAX_TRACKED_KEYS, so the common path stays O(1)-ish.
+   */
+  private evictIdleKeys(now: number): void {
+    const windowStart = now - this.windowMs
+    for (const [key, stamps] of this.hits) {
+      const latest = stamps.length > 0 ? Math.max(...stamps) : windowStart
+      if (latest <= windowStart) this.hits.delete(key)
+      if (this.hits.size <= MAX_TRACKED_KEYS) break
+    }
   }
 
   /** Test/ops escape hatch — not used in request paths. */
