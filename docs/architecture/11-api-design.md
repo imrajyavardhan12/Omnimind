@@ -351,19 +351,28 @@ POST /v1/council/runs/:runId/cancel
 GET /v1/usage/summary
 ```
 
-Query params:
+Query params (`from`/`to` are ISO datetimes; defaults to the current UTC month):
 
 ```txt
 from
 to
-provider
-model
 ```
+
+Response is totals plus per-model buckets plus a daily series; costs are
+6dp strings preserving ledger precision.
 
 ### Get Usage Ledger
 
 ```txt
 GET /v1/usage/ledger
+```
+
+Query params:
+
+```txt
+provider
+model
+limit (1–100, default 50)
 ```
 
 ## Error Response

@@ -11,6 +11,7 @@ import { createModelsRouter } from "./routes/models.js"
 import { createChatRunsRouter } from "./routes/chat-runs.js"
 import { createCouncilRouter } from "./routes/council.js"
 import { createFilesRouter } from "./routes/files.js"
+import { createUsageRouter } from "./routes/usage.js"
 import { createR2Client } from "./lib/r2.js"
 import { createAuthMiddleware } from "./middleware/auth.js"
 import { createWorkspaceMiddleware } from "./middleware/workspace.js"
@@ -79,6 +80,7 @@ v1.route("/council/runs", createCouncilRouter(db, env.PROVIDER_KEY_ENCRYPTION_SE
 v1.route("/files", createFilesRouter(db, { client: r2Client, bucket: env.R2_BUCKET }, {
   uploadRateLimiter: new InMemoryRateLimiter({ maxRequests: env.RATE_LIMIT_FILE_UPLOADS_PER_HOUR, windowMs: 3_600_000 }),
 }))
+v1.route("/usage", createUsageRouter(db))
 
 app.route("/v1", v1)
 

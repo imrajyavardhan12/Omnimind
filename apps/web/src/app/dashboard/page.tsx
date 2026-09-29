@@ -3,6 +3,7 @@
 import { useUser, useClerk } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Mail, Calendar, Key, Shield } from 'lucide-react'
+import { UsageSection } from '@/features/usage/components/UsageSection'
 
 export default function DashboardPage() {
   const { user } = useUser()
@@ -99,6 +100,8 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        <UsageSection />
 
         <div className="border border-border rounded-lg p-6 space-y-4">
           <h2 className="text-xl font-semibold">Account Actions</h2>
