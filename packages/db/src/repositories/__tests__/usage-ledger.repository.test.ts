@@ -87,3 +87,22 @@ describe('UsageLedgerRepository.sumCostSince', () => {
     await expect(repo.sumCostSince('ws_1', new Date())).resolves.toBe(0)
   })
 })
+
+describe('UsageLedgerRepository.getSummary', () => {
+  it('groups by provider, model, and UTC day with a window filter', async () => {
+    const groupBy = vi.fn()
+    const where = vi.fn().mockReturnValue({ groupBy })
+    const from = vi.fn().mockReturnValue({ where })
+    const select = vi.fn().mockReturnValue({ from })
+    const limit = vi.fn().mockResolvedValue([])
+    groupBy.mockReturnValue({ limit })
+    const repo = new UsageLedgerRepository({ select } as any)
+    const fromDate = new Date('2026-09-01T00:00:00.000Z')
+    const toDate = new Date('2026-09-28T00:00:00.000Z')
+    await repo.getSummary('ws_1', fromDate, toDate)
+    expect(select).toHaveBeenCalled()
+    expect(where).toHaveBeenCalled()
+    expect(groupBy).toHaveBeenCalled()
+    expect(limit).toHaveBeenCalledWith(5000)
+  })
+})

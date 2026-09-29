@@ -14,7 +14,7 @@ export { ChatModelRunRepository } from './repositories/chat-model-run.repository
 export type { ChatModelRunUpdateFields } from './repositories/chat-model-run.repository.js'
 export { ChatRunEventRepository } from './repositories/chat-run-event.repository.js'
 export { UsageLedgerRepository } from './repositories/usage-ledger.repository.js'
-export type { UsageLedgerFilters } from './repositories/usage-ledger.repository.js'
+export type { UsageLedgerFilters, UsageSummaryRow } from './repositories/usage-ledger.repository.js'
 export { ChatRunWriteRepository } from './repositories/chat-run-write.repository.js'
 export type { ChatModelRunCompletionFields } from './repositories/chat-run-write.repository.js'
 export { FileRepository } from './repositories/file.repository.js'
