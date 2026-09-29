@@ -1,4 +1,6 @@
 {
   "framework": "nextjs",
-  "rootDirectory": "apps/web"
+  "rootDirectory": "apps/web",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm --filter @omnimind/web build"
 }
