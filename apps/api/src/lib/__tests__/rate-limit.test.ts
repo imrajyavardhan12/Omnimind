@@ -42,3 +42,16 @@ describe('rateLimitKey', () => {
     expect(rateLimitKey('chat-runs', 'user_1')).not.toBe(rateLimitKey('council-runs', 'user_1'))
   })
 })
+
+describe('InMemoryRateLimiter memory bounds', () => {
+  it('evicts fully-expired keys once the tracked set grows past the cap', () => {
+    const limiter = new InMemoryRateLimiter({ maxRequests: 1, windowMs: 1_000 })
+    const hits = (limiter as unknown as { hits: Map<string, number[]> }).hits
+    for (let i = 0; i < 10_050; i++) limiter.check(`user-${i}`, 0)
+    expect(hits.size).toBeLessThanOrEqual(10_050)
+    // All entries are now idle (window expired); the next check sweeps them.
+    limiter.check('fresh-user', 5_000)
+    expect(hits.has('user-0')).toBe(false)
+    expect(hits.has('fresh-user')).toBe(true)
+  })
+})
