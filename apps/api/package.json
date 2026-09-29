@@ -19,7 +19,7 @@
     "@omnimind/config": "workspace:*",
     "@omnimind/db": "workspace:*",
     "@omnimind/types": "workspace:*",
-    "hono": "^4.6.20",
+    "hono": "^4.12.34",
     "mammoth": "^1.12.3",
     "unpdf": "^1.8.1"
   },
